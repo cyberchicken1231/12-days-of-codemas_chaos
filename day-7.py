@@ -110,8 +110,8 @@ pir_burst_until = 0   # ticks_ms timestamp until which override remains active
 # -------------------------
 # Day 8: DS18B20 Temperature Sensor
 # -------------------------
-# Initialize 1-wire bus on GPIO 26
-temp_pin = Pin(26)
+# Initialize 1-wire bus on GPIO 16 (physical pin 21)
+temp_pin = Pin(16)
 temp_sensor = ds18x20.DS18X20(onewire.OneWire(temp_pin))
 
 # Scan for DS18B20 devices
