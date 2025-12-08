@@ -1,7 +1,8 @@
-# fused_chaos_with_quantum_and_dirac_influence.py (Day 4 integrated)
+# fused_chaos_with_quantum_and_dirac_influence.py (Day 6)
 # MicroPython on RP2040 (Pico)
+# Day 5 + Day 6 phototransistor
 
-from machine import Pin, ADC
+from machine import Pin, ADC, PWM
 import time
 import random
 import math
@@ -63,10 +64,9 @@ green = Pin(20, Pin.OUT)
 # -------------------------
 # Day 5: Piezo PWM
 # -------------------------
-from machine import PWM
 piezo = PWM(Pin(15))
-piezo.freq(440)      # default tone, overwritten every loop
-piezo.duty_u16(0)    # start silent
+piezo.freq(440)
+piezo.duty_u16(0)
 
 # -------------------------
 # Environmental noise (floating ADC)
@@ -90,20 +90,11 @@ def read_buttons():
 # Day 4: Potentiometer (ADC26)
 # -------------------------
 pot = ADC(26)
+
 # -------------------------
 # Day 6: Phototransistor (ADC28)
 # -------------------------
 photo = ADC(28)
-# -------------------------
-# Day 7: PIR Motion Sensor
-# -------------------------
-pir = Pin(22, Pin.IN)  # Motion = 1, No motion = 0
-
-# -------------------------
-# Burst/edge state for PIR immediate reaction
-# -------------------------
-last_pir = 0
-pir_burst_until = 0   # ticks_ms timestamp until which override remains active
 
 # -------------------------
 # Chaos & mutation
@@ -156,43 +147,24 @@ while True:
     # Read potentiometer
     # -------------------------
     pot_raw = pot.read_u16()
-    pot_norm = pot_raw / 65535.0      # 0.0 → 1.0
+    pot_norm = pot_raw / 65535.0
+
+    pot_flip = pot_norm * 0.25
 
     # -------------------------
     # Day 6: Phototransistor noise
     # -------------------------
     photo_bits, photo_level = get_photo_noise()
 
-    # Day 7: PIR read
-    pir_state = pir.value()  # 1 = motion detected
-    # detect rising edge to trigger a short immediate burst
-    if pir_state and not last_pir:
-        # burst for 150 ms (adjust as you like)
-        pir_burst_until = time.ticks_add(now, 150)
-        print("PIR RISING EDGE: burst until", pir_burst_until)
-    last_pir = pir_state
-
-    # extra jitter from PIR presence (used in flip chance)
-    pir_jitter = 0.15 if pir_state == 1 else 0.0
-
-    # speed multiplier (0.3× to ~2.3×)
-    speed_scale = 0.3 + (pot_norm * 2.0)
-    print("PIR:", pir_state)
-
-    # extra bit-flip energy
-    pot_flip = pot_norm * 0.25
-
     # -------------------------
     # Dirac spinor influence
     # -------------------------
     spin = fake_dirac_spinor(t, button_bits)
-    # Normalize spinor components from [-1, 1] to [0, 1] for probability calculations
     s0 = (spin[0] + 1) / 2
     s1 = (spin[1] + 1) / 2
     s2 = (spin[2] + 1) / 2
     s3 = (spin[3] + 1) / 2
 
-    # Convert spinor components to probabilistic bits (higher spinor = more likely 1)
     spin_bits = [
         1 if s0 > random.random() else 0,
         1 if s1 > random.random() else 0,
@@ -208,17 +180,14 @@ while True:
     # -------------------------
     # Logistic map chaos
     # -------------------------
-    # Adjust r parameter based on spinor and button input (stays in chaotic regime)
     r = 3.5 + s0 * 0.49 + button_pressure * 0.1
     x = r * x * (1 - x)
-    # Reset if x escapes valid range
     if not (0 < x < 1):
         x = random.random()
 
-    # Use chaos to select which LED to turn OFF (creates chaotic pattern)
     chaos_index = int(x * 3)
     chaos_bits = [1, 1, 1]
-    chaos_bits[chaos_index] = 0  # Turn off one LED based on chaos
+    chaos_bits[chaos_index] = 0
 
     # -------------------------
     # Mutation
@@ -239,24 +208,21 @@ while True:
         OMEGA = 0.1
 
     quantum_phase += OMEGA * dt
-    # Prevent phase overflow while maintaining periodicity
     if quantum_phase > 1e6:
         quantum_phase %= 2 * math.pi
 
-    # Generate quantum bits using phase-shifted oscillators
     q_bits = []
     for i in range(3):
-        off = i * 0.7  # Phase offset for each LED
-        p = math.sin(0.5 * (quantum_phase + off)) ** 2  # Probability from oscillator
-        bias = 0.05 * spin_bits[i] + 0.1 * button_bits[i]  # Input influence
+        off = i * 0.7
+        p = math.sin(0.5 * (quantum_phase + off)) ** 2
+        bias = 0.05 * spin_bits[i] + 0.1 * button_bits[i]
         q_bits.append(1 if (p + bias > random.random()) else 0)
 
     # -------------------------
-    # Fusion - XOR all sources together for maximum entropy
+    # Fusion - XOR all sources together
     # -------------------------
     final = []
     for i in range(3):
-        # Combine all bit sources using XOR (each source influences final state)
         mixed = (
             noise_bits[i]      # Environmental randomness
             ^ chaos_bits[i]    # Deterministic chaos
@@ -267,82 +233,51 @@ while True:
             ^ photo_bits[i]    # Day 6: optical randomness
         )
 
-        # Add probabilistic bit flip for extra unpredictability
-        flip_chance = 0.02 + 0.06 * s3 + 0.05 * button_pressure + pot_flip + pir_jitter
+        flip_chance = 0.02 + 0.06 * s3 + 0.05 * button_pressure + pot_flip
         if random.random() < flip_chance:
             mixed ^= 1
 
         final.append(mixed)
 
     # -------------------------
-    # Output LEDs (normal)
+    # Output LEDs
     # -------------------------
-    red.value(final[0] ^ pir_state)
-    amber.value(final[1] ^ pir_state)
-    green.value(final[2] ^ pir_state)
+    red.value(final[0])
+    amber.value(final[1])
+    green.value(final[2])
 
     # -------------------------
     # Day 5: Chaos audio output
     # -------------------------
-    # Pick a frequency based on the fusion of chaos components.
-    # Piezo reacts to: logistic map + spinor + q-state + buttons (+ pot later)
-    audio_base = 200 + int(x * 600)          # 200–800 Hz from logistic map
-    audio_spin = int((s0 + s1 + s2) * 300)   # spinor energy → harmonic lift
-    audio_quant = int(sum(q_bits) * 150)     # quantum states → resonance bumps
+    audio_base = 200 + int(x * 600)
+    audio_spin = int((s0 + s1 + s2) * 300)
+    audio_quant = int(sum(q_bits) * 150)
     audio_buttons = int(button_pressure * 250)
 
     freq = audio_base + audio_spin + audio_quant + audio_buttons
 
-    # Keep piezo in a sane range so the RP2040 doesn't brown-note itself
     if freq < 100:
         freq = 100
-    elif freq > 4000:     # 4 kHz max: still audible, not ultrasonic hell
+    elif freq > 4000:
         freq = 4000
-    if pir_state:
-        freq += 200   # sudden motion = excite the system
 
     piezo.freq(freq)
 
-    # Duty cycle:
-    #  - 0 if final chaos vector is all-zero  
-    #  - else we give it a jittery amplitude to keep it alive-sounding
     if sum(final) == 0:
         piezo.duty_u16(0)
     else:
-        # 1–5% duty range is loud enough but safe
-        # jitter keeps the tone from sounding like a fixed beep
         duty = 1000 + int(2000 * random.random())
         piezo.duty_u16(duty)
 
     # -------------------------
-    # Immediate PIR override (burst) — takes precedence for the burst duration
+    # Jitter
     # -------------------------
-    # If a PIR rising edge occurred recently, make a short immediate flinch:
-    if time.ticks_diff(pir_burst_until, now) > 0:
-        # override LEDs to full-on flinch (you can change behavior here)
-        red.value(1)
-        amber.value(1)
-        green.value(1)
-        # make piezo screech briefly (bounded)
-        piezo.freq(1800)
-        piezo.duty_u16(3000)
-    # else keep the normal outputs (already set above)
-
-    # -------------------------
-    # Jitter — variable timing influenced by quantum phase, spinor, and buttons
-    # -------------------------
-    # Base timing jitter from quantum oscillator
     jitter = 0.003 + (math.sin(0.5 * quantum_phase)**2) * 0.05
-    jitter += s3 * 0.03            # Spinor influence
-    jitter += button_pressure * 0.04  # Button influence
+    jitter += s3 * 0.03
+    jitter += button_pressure * 0.04
 
-    # Random delay within jitter range
     base_delay = random.uniform(jitter, jitter + 0.12)
 
-    # Apply speed multiplier from potentiometer (time dilation effect)
-    # LOW-LATENCY PIR LOOP FIX: cap the delay so PIR pulses are not missed
-    # Pot controls max loop delay from 1ms → 150ms
-    max_delay = 0.001 + pot_norm * 0.149   # 0.001–0.150 seconds
-    # Jitter still applies but capped by max_delay
+    max_delay = 0.001 + pot_norm * 0.149
     delay = min(base_delay, max_delay)
     time.sleep(delay)
