@@ -5,6 +5,8 @@ from machine import Pin, ADC
 import time
 import random
 import math
+import onewire
+import ds18x20
 
 # -------------------------
 # Day 6: Convert light to entropy bits
@@ -106,6 +108,22 @@ last_pir = 0
 pir_burst_until = 0   # ticks_ms timestamp until which override remains active
 
 # -------------------------
+# Day 8: DS18B20 Temperature Sensor
+# -------------------------
+# Initialize 1-wire bus on GPIO 16 (physical pin 21)
+temp_pin = Pin(16)
+temp_sensor = ds18x20.DS18X20(onewire.OneWire(temp_pin))
+
+# Scan for DS18B20 devices
+temp_roms = temp_sensor.scan()
+print("Found DS18B20 devices:", temp_roms)
+
+# Temperature tracking
+last_temp_read = 0
+current_temp = 20.0  # default starting temperature in Celsius
+TEMP_READ_INTERVAL = 750  # read every 750ms (sensor conversion takes ~750ms)
+
+# -------------------------
 # Chaos & mutation
 # -------------------------
 x = random.random()
@@ -163,6 +181,43 @@ while True:
     # -------------------------
     photo_bits, photo_level = get_photo_noise()
 
+    # -------------------------
+    # Day 8: Temperature sensor read (non-blocking with interval)
+    # -------------------------
+    temp_influence = 0.0
+    temp_bits = [0, 0, 0]
+
+    if temp_roms and time.ticks_diff(now, last_temp_read) >= TEMP_READ_INTERVAL:
+        try:
+            # Start conversion
+            temp_sensor.convert_temp()
+            time.sleep_ms(750)  # Wait for conversion (DS18B20 needs ~750ms)
+
+            # Read temperature
+            current_temp = temp_sensor.read_temp(temp_roms[0])
+            last_temp_read = now
+
+            print("TEMP:", current_temp, "°C")
+
+            # Normalize temperature to 0.0-1.0 range
+            # Assume typical indoor range: 15°C to 35°C
+            temp_norm = (current_temp - 15.0) / 20.0
+            temp_norm = max(0.0, min(1.0, temp_norm))  # clamp to 0-1
+
+            # Temperature influence on chaos (warmer = more chaotic)
+            temp_influence = temp_norm * 0.3
+
+            # Convert temperature to entropy bits
+            # Use fractional part of temperature for randomness
+            temp_frac = (current_temp * 100) % 8  # 0-7
+            temp_bits = [
+                (int(temp_frac) >> 0) & 1,
+                (int(temp_frac) >> 1) & 1,
+                (int(temp_frac) >> 2) & 1,
+            ]
+        except Exception as e:
+            print("Temp read error:", e)
+
     # Day 7: PIR read
     pir_state = pir.value()  # 1 = motion detected
     # detect rising edge to trigger a short immediate burst
@@ -208,8 +263,8 @@ while True:
     # -------------------------
     # Logistic map chaos
     # -------------------------
-    # Adjust r parameter based on spinor and button input (stays in chaotic regime)
-    r = 3.5 + s0 * 0.49 + button_pressure * 0.1
+    # Adjust r parameter based on spinor, button input, and temperature (stays in chaotic regime)
+    r = 3.5 + s0 * 0.49 + button_pressure * 0.1 + temp_influence * 0.15
     x = r * x * (1 - x)
     # Reset if x escapes valid range
     if not (0 < x < 1):
@@ -223,7 +278,8 @@ while True:
     # -------------------------
     # Mutation
     # -------------------------
-    mutate_chance = 0.05 + s2 * 0.35 + button_pressure * 0.2
+    # Temperature adds thermal noise to mutation (warmer = more mutations)
+    mutate_chance = 0.05 + s2 * 0.35 + button_pressure * 0.2 + temp_influence * 0.15
     if random.random() < mutate_chance:
         idx = random.randint(0, 2)
         mut_state[idx] = random.randint(0, 1)
@@ -265,10 +321,12 @@ while True:
             ^ spin_bits[i]     # Dirac spinor
             ^ button_bits[i]   # User input
             ^ photo_bits[i]    # Day 6: optical randomness
+            ^ temp_bits[i]     # Day 8: thermal entropy
         )
 
         # Add probabilistic bit flip for extra unpredictability
-        flip_chance = 0.02 + 0.06 * s3 + 0.05 * button_pressure + pot_flip + pir_jitter
+        # Temperature adds thermal noise to flip chance
+        flip_chance = 0.02 + 0.06 * s3 + 0.05 * button_pressure + pot_flip + pir_jitter + temp_influence * 0.1
         if random.random() < flip_chance:
             mixed ^= 1
 
@@ -285,13 +343,14 @@ while True:
     # Day 5: Chaos audio output
     # -------------------------
     # Pick a frequency based on the fusion of chaos components.
-    # Piezo reacts to: logistic map + spinor + q-state + buttons (+ pot later)
+    # Piezo reacts to: logistic map + spinor + q-state + buttons + temperature
     audio_base = 200 + int(x * 600)          # 200–800 Hz from logistic map
     audio_spin = int((s0 + s1 + s2) * 300)   # spinor energy → harmonic lift
     audio_quant = int(sum(q_bits) * 150)     # quantum states → resonance bumps
     audio_buttons = int(button_pressure * 250)
+    audio_temp = int(temp_influence * 200)   # Day 8: temperature → thermal resonance
 
-    freq = audio_base + audio_spin + audio_quant + audio_buttons
+    freq = audio_base + audio_spin + audio_quant + audio_buttons + audio_temp
 
     # Keep piezo in a sane range so the RP2040 doesn't brown-note itself
     if freq < 100:
