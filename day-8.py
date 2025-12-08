@@ -121,7 +121,9 @@ print("Found DS18B20 devices:", temp_roms)
 # Temperature tracking
 last_temp_read = 0
 current_temp = 20.0  # default starting temperature in Celsius
-TEMP_READ_INTERVAL = 750  # read every 750ms (sensor conversion takes ~750ms)
+TEMP_READ_INTERVAL = 2000  # read every 2 seconds to avoid blocking (sensor conversion takes ~750ms)
+temp_conversion_started = False
+temp_conversion_time = 0
 
 # -------------------------
 # Chaos & mutation
@@ -182,41 +184,50 @@ while True:
     photo_bits, photo_level = get_photo_noise()
 
     # -------------------------
-    # Day 8: Temperature sensor read (non-blocking with interval)
+    # Day 8: Temperature sensor read (non-blocking with 2-stage approach)
     # -------------------------
     temp_influence = 0.0
     temp_bits = [0, 0, 0]
 
-    if temp_roms and time.ticks_diff(now, last_temp_read) >= TEMP_READ_INTERVAL:
-        try:
-            # Start conversion
-            temp_sensor.convert_temp()
-            time.sleep_ms(750)  # Wait for conversion (DS18B20 needs ~750ms)
+    # Two-stage temperature reading to avoid blocking
+    if temp_roms:
+        # Stage 1: Start conversion if interval elapsed and no conversion in progress
+        if not temp_conversion_started and time.ticks_diff(now, last_temp_read) >= TEMP_READ_INTERVAL:
+            try:
+                temp_sensor.convert_temp()
+                temp_conversion_started = True
+                temp_conversion_time = now
+            except Exception as e:
+                print("Temp conversion start error:", e)
 
-            # Read temperature
-            current_temp = temp_sensor.read_temp(temp_roms[0])
-            last_temp_read = now
+        # Stage 2: Read temperature after 750ms conversion time
+        if temp_conversion_started and time.ticks_diff(now, temp_conversion_time) >= 750:
+            try:
+                current_temp = temp_sensor.read_temp(temp_roms[0])
+                last_temp_read = now
+                temp_conversion_started = False
 
-            print("TEMP:", current_temp, "°C")
+                print("TEMP:", current_temp, "°C")
+            except Exception as e:
+                print("Temp read error:", e)
+                temp_conversion_started = False
 
-            # Normalize temperature to 0.0-1.0 range
-            # Assume typical indoor range: 15°C to 35°C
-            temp_norm = (current_temp - 15.0) / 20.0
-            temp_norm = max(0.0, min(1.0, temp_norm))  # clamp to 0-1
+    # Calculate temperature influence (use cached current_temp value)
+    if current_temp is not None:
+        # Normalize temperature to 0.0-1.0 range
+        temp_norm = (current_temp - 15.0) / 20.0
+        temp_norm = max(0.0, min(1.0, temp_norm))  # clamp to 0-1
 
-            # Temperature influence on chaos (warmer = more chaotic)
-            temp_influence = temp_norm * 0.3
+        # Temperature influence on chaos (warmer = more chaotic)
+        temp_influence = temp_norm * 0.3
 
-            # Convert temperature to entropy bits
-            # Use fractional part of temperature for randomness
-            temp_frac = (current_temp * 100) % 8  # 0-7
-            temp_bits = [
-                (int(temp_frac) >> 0) & 1,
-                (int(temp_frac) >> 1) & 1,
-                (int(temp_frac) >> 2) & 1,
-            ]
-        except Exception as e:
-            print("Temp read error:", e)
+        # Convert temperature to entropy bits
+        temp_frac = (current_temp * 100) % 8  # 0-7
+        temp_bits = [
+            (int(temp_frac) >> 0) & 1,
+            (int(temp_frac) >> 1) & 1,
+            (int(temp_frac) >> 2) & 1,
+        ]
 
     # Day 7: PIR read
     pir_state = pir.value()  # 1 = motion detected
@@ -234,8 +245,8 @@ while True:
     speed_scale = 0.3 + (pot_norm * 2.0)
     print("PIR:", pir_state)
 
-    # extra bit-flip energy
-    pot_flip = pot_norm * 0.25
+    # extra bit-flip energy - AGGRESSIVE pot response
+    pot_flip = pot_norm * 0.6  # Increased from 0.25 to 0.6 for more chaos
 
     # -------------------------
     # Dirac spinor influence
@@ -263,8 +274,8 @@ while True:
     # -------------------------
     # Logistic map chaos
     # -------------------------
-    # Adjust r parameter based on spinor, button input, and temperature (stays in chaotic regime)
-    r = 3.5 + s0 * 0.49 + button_pressure * 0.1 + temp_influence * 0.15
+    # Adjust r parameter based on spinor, button input, temperature, and POT (aggressive)
+    r = 3.5 + s0 * 0.49 + button_pressure * 0.1 + temp_influence * 0.15 + pot_norm * 0.2
     x = r * x * (1 - x)
     # Reset if x escapes valid range
     if not (0 < x < 1):
@@ -278,8 +289,8 @@ while True:
     # -------------------------
     # Mutation
     # -------------------------
-    # Temperature adds thermal noise to mutation (warmer = more mutations)
-    mutate_chance = 0.05 + s2 * 0.35 + button_pressure * 0.2 + temp_influence * 0.15
+    # Temperature and POT add thermal/kinetic noise to mutation
+    mutate_chance = 0.05 + s2 * 0.35 + button_pressure * 0.2 + temp_influence * 0.15 + pot_norm * 0.25
     if random.random() < mutate_chance:
         idx = random.randint(0, 2)
         mut_state[idx] = random.randint(0, 1)
@@ -290,7 +301,8 @@ while True:
     # -------------------------
     # Quantum oscillator
     # -------------------------
-    OMEGA = OMEGA_BASE * (1.0 + (s1 - 0.5) * 0.6 + button_pressure * 0.3)
+    # POT adds aggressive frequency modulation
+    OMEGA = OMEGA_BASE * (1.0 + (s1 - 0.5) * 0.6 + button_pressure * 0.3 + pot_norm * 0.5)
     if OMEGA < 0.1:
         OMEGA = 0.1
 
@@ -388,20 +400,20 @@ while True:
     # else keep the normal outputs (already set above)
 
     # -------------------------
-    # Jitter — variable timing influenced by quantum phase, spinor, and buttons
+    # Jitter — FASTER timing, aggressive pot control
     # -------------------------
-    # Base timing jitter from quantum oscillator
-    jitter = 0.003 + (math.sin(0.5 * quantum_phase)**2) * 0.05
-    jitter += s3 * 0.03            # Spinor influence
-    jitter += button_pressure * 0.04  # Button influence
+    # Reduced base timing jitter for faster response
+    jitter = 0.001 + (math.sin(0.5 * quantum_phase)**2) * 0.02  # Reduced from 0.003 and 0.05
+    jitter += s3 * 0.01            # Reduced from 0.03
+    jitter += button_pressure * 0.02  # Reduced from 0.04
 
-    # Random delay within jitter range
-    base_delay = random.uniform(jitter, jitter + 0.12)
+    # Random delay within jitter range - smaller range for speed
+    base_delay = random.uniform(jitter, jitter + 0.04)  # Reduced from 0.12
 
-    # Apply speed multiplier from potentiometer (time dilation effect)
-    # LOW-LATENCY PIR LOOP FIX: cap the delay so PIR pulses are not missed
-    # Pot controls max loop delay from 1ms → 150ms
-    max_delay = 0.001 + pot_norm * 0.149   # 0.001–0.150 seconds
+    # AGGRESSIVE pot control: very fast to moderately fast
+    # Pot at 0 = 0.1ms (VERY FAST), Pot at 1 = 50ms (moderate)
+    max_delay = 0.0001 + pot_norm * 0.05   # Changed from 0.001-0.150 to 0.0001-0.05
+
     # Jitter still applies but capped by max_delay
     delay = min(base_delay, max_delay)
     time.sleep(delay)
