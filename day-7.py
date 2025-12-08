@@ -179,8 +179,8 @@ while True:
     speed_scale = 0.3 + (pot_norm * 2.0)
     print("PIR:", pir_state)
 
-    # extra bit-flip energy
-    pot_flip = pot_norm * 0.25
+    # extra bit-flip energy - AGGRESSIVE pot response
+    pot_flip = pot_norm * 0.6  # Increased from 0.25 to 0.6 for more chaos
 
     # -------------------------
     # Dirac spinor influence
@@ -208,8 +208,8 @@ while True:
     # -------------------------
     # Logistic map chaos
     # -------------------------
-    # Adjust r parameter based on spinor and button input (stays in chaotic regime)
-    r = 3.5 + s0 * 0.49 + button_pressure * 0.1
+    # Adjust r parameter based on spinor, button input, and POT (aggressive)
+    r = 3.5 + s0 * 0.49 + button_pressure * 0.1 + pot_norm * 0.2
     x = r * x * (1 - x)
     # Reset if x escapes valid range
     if not (0 < x < 1):
@@ -223,7 +223,8 @@ while True:
     # -------------------------
     # Mutation
     # -------------------------
-    mutate_chance = 0.05 + s2 * 0.35 + button_pressure * 0.2
+    # POT adds kinetic energy to mutation rate
+    mutate_chance = 0.05 + s2 * 0.35 + button_pressure * 0.2 + pot_norm * 0.25
     if random.random() < mutate_chance:
         idx = random.randint(0, 2)
         mut_state[idx] = random.randint(0, 1)
@@ -234,7 +235,8 @@ while True:
     # -------------------------
     # Quantum oscillator
     # -------------------------
-    OMEGA = OMEGA_BASE * (1.0 + (s1 - 0.5) * 0.6 + button_pressure * 0.3)
+    # POT adds aggressive frequency modulation
+    OMEGA = OMEGA_BASE * (1.0 + (s1 - 0.5) * 0.6 + button_pressure * 0.3 + pot_norm * 0.5)
     if OMEGA < 0.1:
         OMEGA = 0.1
 
@@ -329,20 +331,20 @@ while True:
     # else keep the normal outputs (already set above)
 
     # -------------------------
-    # Jitter — variable timing influenced by quantum phase, spinor, and buttons
+    # Jitter — FASTER timing, aggressive pot control
     # -------------------------
-    # Base timing jitter from quantum oscillator
-    jitter = 0.003 + (math.sin(0.5 * quantum_phase)**2) * 0.05
-    jitter += s3 * 0.03            # Spinor influence
-    jitter += button_pressure * 0.04  # Button influence
+    # Reduced base timing jitter for faster response
+    jitter = 0.001 + (math.sin(0.5 * quantum_phase)**2) * 0.02  # Reduced from 0.003 and 0.05
+    jitter += s3 * 0.01            # Reduced from 0.03
+    jitter += button_pressure * 0.02  # Reduced from 0.04
 
-    # Random delay within jitter range
-    base_delay = random.uniform(jitter, jitter + 0.12)
+    # Random delay within jitter range - smaller range for speed
+    base_delay = random.uniform(jitter, jitter + 0.04)  # Reduced from 0.12
 
-    # Apply speed multiplier from potentiometer (time dilation effect)
-    # LOW-LATENCY PIR LOOP FIX: cap the delay so PIR pulses are not missed
-    # Pot controls max loop delay from 1ms → 150ms
-    max_delay = 0.001 + pot_norm * 0.149   # 0.001–0.150 seconds
+    # AGGRESSIVE pot control: very fast to moderately fast
+    # Pot at 0 = 0.1ms (VERY FAST), Pot at 1 = 50ms (moderate)
+    max_delay = 0.0001 + pot_norm * 0.05   # Changed from 0.001-0.150 to 0.0001-0.05
+
     # Jitter still applies but capped by max_delay
     delay = min(base_delay, max_delay)
     time.sleep(delay)
