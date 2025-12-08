@@ -403,16 +403,16 @@ while True:
     # Jitter — FASTER timing, aggressive pot control
     # -------------------------
     # Reduced base timing jitter for faster response
-    jitter = 0.001 + (math.sin(0.5 * quantum_phase)**2) * 0.02  # Reduced from 0.003 and 0.05
-    jitter += s3 * 0.01            # Reduced from 0.03
-    jitter += button_pressure * 0.02  # Reduced from 0.04
+    jitter = 0.001 + (math.sin(0.5 * quantum_phase)**2) * 0.02
+    jitter += s3 * 0.01
+    jitter += button_pressure * 0.02
 
     # Random delay within jitter range - smaller range for speed
-    base_delay = random.uniform(jitter, jitter + 0.04)  # Reduced from 0.12
+    base_delay = random.uniform(jitter, jitter + 0.04)
 
-    # AGGRESSIVE pot control: very fast to moderately fast
-    # Pot at 0 = 0.1ms (VERY FAST), Pot at 1 = 50ms (moderate)
-    max_delay = 0.0001 + pot_norm * 0.05   # Changed from 0.001-0.150 to 0.0001-0.05
+    # EXTREMELY AGGRESSIVE pot control: very slow to extremely fast
+    # Pot at 0 (min) = 500ms (0.5 sec SLOW), Pot at 1 (max) = 0.1ms (EXTREMELY FAST)
+    max_delay = 0.5 - (pot_norm * 0.4999)   # 0.5s down to 0.0001s
 
     # Jitter still applies but capped by max_delay
     delay = min(base_delay, max_delay)
