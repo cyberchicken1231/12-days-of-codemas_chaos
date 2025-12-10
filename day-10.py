@@ -1,0 +1,494 @@
+# fused_chaos_with_quantum_and_dirac_influence.py (Day 10 integrated)
+# MicroPython on RP2040 (Pico)
+
+from machine import Pin, ADC
+import time
+import random
+import math
+import onewire
+import ds18x20
+
+# -------------------------
+# Day 6: Convert light to entropy bits
+# -------------------------
+def get_photo_noise():
+    raw = photo.read_u16()          # 0–65535
+    bright = raw / 65535.0          # normalize to 0.0–1.0
+
+    # As light increases → probability of flipping increases
+    flip_strength = bright * 0.25   # up to 25%
+
+    bits = []
+    for i in range(3):
+        b = random.getrandbits(1)
+
+        # light-driven flip
+        if random.random() < flip_strength:
+            b ^= 1
+
+        # tiny extra chaos spur
+        if random.random() < (bright * 0.08):
+            b ^= 1
+
+        bits.append(b)
+
+    return bits, bright
+
+# -------------------------
+# Dirac toy spinor (4 components)
+# -------------------------
+def fake_dirac_spinor(t, buttons):
+    b0, b1, b2 = buttons
+
+    phase = (
+        t
+        + 0.8 * b0 * math.sin(3 * t)
+        + 0.5 * b1 * math.sin(9 * t)
+    )
+
+    amp = 1.0 + 0.4 * b2 * math.sin(5 * t)
+
+    return [
+        amp * math.sin(phase),
+        amp * math.cos(phase),
+        amp * math.sin(2 * phase),
+        amp * math.cos(2 * phase),
+    ]
+
+# -------------------------
+# LEDs
+# -------------------------
+red = Pin(18, Pin.OUT)
+amber = Pin(19, Pin.OUT)
+green = Pin(20, Pin.OUT)
+
+# -------------------------
+# Day 5: Piezo PWM
+# -------------------------
+from machine import PWM
+piezo = PWM(Pin(15))
+piezo.freq(440)      # default tone, overwritten every loop
+piezo.duty_u16(0)    # start silent
+
+# -------------------------
+# Environmental noise (floating ADC)
+# -------------------------
+noise = ADC(27)
+
+# -------------------------
+# Day 3: Buttons
+# -------------------------
+button_pins = [13, 8, 3]
+buttons = [Pin(p, Pin.IN, Pin.PULL_UP) for p in button_pins]
+
+def read_buttons():
+    return [
+        0 if buttons[0].value() else 1,
+        0 if buttons[1].value() else 1,
+        0 if buttons[2].value() else 1,
+    ]
+
+# -------------------------
+# Day 4: Potentiometer (ADC26)
+# -------------------------
+pot = ADC(26)
+# -------------------------
+# Day 6: Phototransistor (ADC28)
+# -------------------------
+photo = ADC(28)
+# -------------------------
+# Day 7: PIR Motion Sensor
+# -------------------------
+pir = Pin(22, Pin.IN)  # Motion = 1, No motion = 0
+
+# -------------------------
+# Burst/edge state for PIR immediate reaction
+# -------------------------
+last_pir = 0
+pir_burst_until = 0   # ticks_ms timestamp until which override remains active
+
+# -------------------------
+# Day 8: DS18B20 Temperature Sensor
+# -------------------------
+# Initialize 1-wire bus on GPIO 16 (physical pin 21)
+temp_pin = Pin(16)
+temp_sensor = ds18x20.DS18X20(onewire.OneWire(temp_pin))
+
+# Scan for DS18B20 devices
+temp_roms = temp_sensor.scan()
+print("Found DS18B20 devices:", temp_roms)
+
+# Temperature tracking
+last_temp_read = 0
+current_temp = 20.0  # default starting temperature in Celsius
+TEMP_READ_INTERVAL = 2000  # read every 2 seconds to avoid blocking (sensor conversion takes ~750ms)
+temp_conversion_started = False
+temp_conversion_time = 0
+
+# -------------------------
+# Day 9: Ball Tilt Switch
+# -------------------------
+tilt = Pin(21, Pin.IN, Pin.PULL_UP)  # GPIO 21 (physical pin 27)
+# Tilt switch: normally closed when level, opens when tilted
+# With PULL_UP: 0 = tilted, 1 = level
+
+last_tilt = 1
+tilt_change_count = 0  # Track how many times it's been tilted
+tilt_energy = 0.0      # Accumulated tilt energy that decays over time
+
+# -------------------------
+# Day 10: IR Beam Break Sensor
+# -------------------------
+beam = Pin(17, Pin.IN)  # GPIO 17 (physical pin 22) - external pull-up
+# Beam break: 0 = beam broken (object in path), 1 = beam clear
+
+last_beam = 1
+beam_break_count = 0   # Total number of breaks
+beam_break_energy = 0.0  # Accumulated break energy (decays)
+last_beam_time = 0     # Time of last beam break
+
+# -------------------------
+# Chaos & mutation
+# -------------------------
+x = random.random()
+r = 3.9
+mut_state = [0, 1, 0]
+
+# -------------------------
+# Quantum oscillator
+# -------------------------
+OMEGA_BASE = 2.0 * math.pi * 2.0
+OMEGA = OMEGA_BASE
+quantum_phase = 0.0
+
+last_t = time.ticks_ms()
+
+# -------------------------
+# Mutation shuffler
+# -------------------------
+def manual_shuffle(arr):
+    for _ in range(2):
+        i = random.randint(0, len(arr) - 1)
+        j = random.randint(0, len(arr) - 1)
+        arr[i], arr[j] = arr[j], arr[i]
+
+# -------------------------
+# Main loop
+# -------------------------
+while True:
+    raw_photo = photo.read_u16()
+    norm_photo = raw_photo / 65535.0
+    print("PHOTO RAW:", raw_photo, "   NORM:", norm_photo)
+
+    now = time.ticks_ms()
+    dt_ms = time.ticks_diff(now, last_t)
+    if dt_ms < 0:
+        dt_ms = 0
+    dt = dt_ms / 1000.0
+    last_t = now
+    t = now / 1000.0
+
+    # -------------------------
+    # Read buttons
+    # -------------------------
+    button_bits = read_buttons()
+    button_pressure = sum(button_bits) / 3.0
+
+    # -------------------------
+    # Read potentiometer
+    # -------------------------
+    pot_raw = pot.read_u16()
+    pot_norm = pot_raw / 65535.0      # 0.0 → 1.0
+
+    # -------------------------
+    # Day 6: Phototransistor noise
+    # -------------------------
+    photo_bits, photo_level = get_photo_noise()
+
+    # -------------------------
+    # Day 8: Temperature sensor read (non-blocking with 2-stage approach)
+    # -------------------------
+    temp_influence = 0.0
+    temp_bits = [0, 0, 0]
+
+    # Two-stage temperature reading to avoid blocking
+    if temp_roms:
+        # Stage 1: Start conversion if interval elapsed and no conversion in progress
+        if not temp_conversion_started and time.ticks_diff(now, last_temp_read) >= TEMP_READ_INTERVAL:
+            try:
+                temp_sensor.convert_temp()
+                temp_conversion_started = True
+                temp_conversion_time = now
+            except Exception as e:
+                print("Temp conversion start error:", e)
+
+        # Stage 2: Read temperature after 750ms conversion time
+        if temp_conversion_started and time.ticks_diff(now, temp_conversion_time) >= 750:
+            try:
+                current_temp = temp_sensor.read_temp(temp_roms[0])
+                last_temp_read = now
+                temp_conversion_started = False
+
+                print("TEMP:", current_temp, "°C")
+            except Exception as e:
+                print("Temp read error:", e)
+                temp_conversion_started = False
+
+    # Calculate temperature influence (use cached current_temp value)
+    if current_temp is not None:
+        # Normalize temperature to 0.0-1.0 range
+        temp_norm = (current_temp - 15.0) / 20.0
+        temp_norm = max(0.0, min(1.0, temp_norm))  # clamp to 0-1
+
+        # Temperature influence on chaos (warmer = more chaotic)
+        temp_influence = temp_norm * 0.3
+
+        # Convert temperature to entropy bits
+        temp_frac = (current_temp * 100) % 8  # 0-7
+        temp_bits = [
+            (int(temp_frac) >> 0) & 1,
+            (int(temp_frac) >> 1) & 1,
+            (int(temp_frac) >> 2) & 1,
+        ]
+
+    # Day 7: PIR read
+    pir_state = pir.value()  # 1 = motion detected
+    # detect rising edge to trigger a short immediate burst
+    if pir_state and not last_pir:
+        # burst for 150 ms (adjust as you like)
+        pir_burst_until = time.ticks_add(now, 150)
+        print("PIR RISING EDGE: burst until", pir_burst_until)
+    last_pir = pir_state
+
+    # extra jitter from PIR presence (used in flip chance)
+    pir_jitter = 0.15 if pir_state == 1 else 0.0
+
+    # speed multiplier (0.3× to ~2.3×)
+    speed_scale = 0.3 + (pot_norm * 2.0)
+    print("PIR:", pir_state)
+
+    # -------------------------
+    # Day 9: Tilt switch read and energy accumulation
+    # -------------------------
+    tilt_state = tilt.value()  # 0 = tilted, 1 = level
+
+    # Detect tilt state changes (shaking/tilting adds energy)
+    if tilt_state != last_tilt:
+        tilt_change_count += 1
+        tilt_energy = min(1.0, tilt_energy + 0.3)  # Add energy on each tilt change, cap at 1.0
+        print("TILT CHANGE! Count:", tilt_change_count, "Energy:", tilt_energy)
+    last_tilt = tilt_state
+
+    # Tilt energy decays over time (simulates calming down after shaking)
+    tilt_energy *= 0.98  # 2% decay per loop
+
+    # Tilt influence: combination of current state and accumulated energy
+    tilt_influence = (1 - tilt_state) * 0.3 + tilt_energy * 0.5  # Max 0.8 total
+
+    # Convert tilt to entropy bits (use change count for randomness)
+    tilt_bits = [
+        (tilt_change_count >> 0) & 1,
+        (tilt_change_count >> 1) & 1,
+        (tilt_change_count >> 2) & 1,
+    ]
+
+    # -------------------------
+    # Day 10: Beam break detection
+    # -------------------------
+    beam_state = beam.value()  # 0 = broken, 1 = clear
+
+    # Detect beam break (falling edge: clear -> broken)
+    if beam_state == 0 and last_beam == 1:
+        beam_break_count += 1
+        beam_break_energy = min(1.0, beam_break_energy + 0.4)  # Big energy spike on break
+        last_beam_time = now
+        print("BEAM BROKEN! Count:", beam_break_count, "Energy:", beam_break_energy)
+    last_beam = beam_state
+
+    # Beam energy decays slower than tilt (1% per loop)
+    beam_break_energy *= 0.99
+
+    # Recent break creates high influence (fades over ~2 seconds)
+    time_since_break = time.ticks_diff(now, last_beam_time)
+    recency_factor = max(0, 1.0 - (time_since_break / 2000.0))  # 0-1 over 2 seconds
+
+    # Beam influence: current break state + accumulated energy + recency
+    beam_influence = (1 - beam_state) * 0.4 + beam_break_energy * 0.3 + recency_factor * 0.3
+
+    # Convert beam to entropy bits (use break count)
+    beam_bits = [
+        (beam_break_count >> 0) & 1,
+        (beam_break_count >> 1) & 1,
+        (beam_break_count >> 2) & 1,
+    ]
+
+    # extra bit-flip energy - AGGRESSIVE pot response + tilt + beam
+    pot_flip = pot_norm * 0.6 + tilt_influence * 0.3 + beam_influence * 0.25
+
+    # -------------------------
+    # Dirac spinor influence
+    # -------------------------
+    spin = fake_dirac_spinor(t, button_bits)
+    # Normalize spinor components from [-1, 1] to [0, 1] for probability calculations
+    s0 = (spin[0] + 1) / 2
+    s1 = (spin[1] + 1) / 2
+    s2 = (spin[2] + 1) / 2
+    s3 = (spin[3] + 1) / 2
+
+    # Convert spinor components to probabilistic bits (higher spinor = more likely 1)
+    spin_bits = [
+        1 if s0 > random.random() else 0,
+        1 if s1 > random.random() else 0,
+        1 if s2 > random.random() else 0,
+    ]
+
+    # -------------------------
+    # ADC noise bits
+    # -------------------------
+    n = noise.read_u16()
+    noise_bits = [(n >> i) & 1 for i in range(3)]
+
+    # -------------------------
+    # Logistic map chaos
+    # -------------------------
+    # Adjust r parameter based on spinor, button, temp, pot, tilt, and BEAM
+    r = 3.5 + s0 * 0.49 + button_pressure * 0.1 + temp_influence * 0.15 + pot_norm * 0.2 + tilt_influence * 0.15 + beam_influence * 0.18
+    x = r * x * (1 - x)
+    # Reset if x escapes valid range
+    if not (0 < x < 1):
+        x = random.random()
+
+    # Use chaos to select which LED to turn OFF (creates chaotic pattern)
+    chaos_index = int(x * 3)
+    chaos_bits = [1, 1, 1]
+    chaos_bits[chaos_index] = 0  # Turn off one LED based on chaos
+
+    # -------------------------
+    # Mutation
+    # -------------------------
+    # Temperature, POT, TILT, and BEAM add various noise sources to mutation
+    mutate_chance = 0.05 + s2 * 0.35 + button_pressure * 0.2 + temp_influence * 0.15 + pot_norm * 0.25 + tilt_influence * 0.2 + beam_influence * 0.18
+    if random.random() < mutate_chance:
+        idx = random.randint(0, 2)
+        mut_state[idx] = random.randint(0, 1)
+
+    if random.random() < (0.15 + s2 * 0.2 + button_pressure * 0.2):
+        manual_shuffle(mut_state)
+
+    # -------------------------
+    # Quantum oscillator
+    # -------------------------
+    # POT, TILT, and BEAM add aggressive frequency modulation
+    OMEGA = OMEGA_BASE * (1.0 + (s1 - 0.5) * 0.6 + button_pressure * 0.3 + pot_norm * 0.5 + tilt_influence * 0.4 + beam_influence * 0.35)
+    if OMEGA < 0.1:
+        OMEGA = 0.1
+
+    quantum_phase += OMEGA * dt
+    # Prevent phase overflow while maintaining periodicity
+    if quantum_phase > 1e6:
+        quantum_phase %= 2 * math.pi
+
+    # Generate quantum bits using phase-shifted oscillators
+    q_bits = []
+    for i in range(3):
+        off = i * 0.7  # Phase offset for each LED
+        p = math.sin(0.5 * (quantum_phase + off)) ** 2  # Probability from oscillator
+        bias = 0.05 * spin_bits[i] + 0.1 * button_bits[i]  # Input influence
+        q_bits.append(1 if (p + bias > random.random()) else 0)
+
+    # -------------------------
+    # Fusion - XOR all sources together for maximum entropy
+    # -------------------------
+    final = []
+    for i in range(3):
+        # Combine all bit sources using XOR (each source influences final state)
+        mixed = (
+            noise_bits[i]      # Environmental randomness
+            ^ chaos_bits[i]    # Deterministic chaos
+            ^ mut_state[i]     # Mutation memory
+            ^ q_bits[i]        # Quantum oscillator
+            ^ spin_bits[i]     # Dirac spinor
+            ^ button_bits[i]   # User input
+            ^ photo_bits[i]    # Day 6: optical randomness
+            ^ temp_bits[i]     # Day 8: thermal entropy
+            ^ tilt_bits[i]     # Day 9: mechanical entropy (shaking/tilting)
+            ^ beam_bits[i]     # Day 10: beam break detection
+        )
+
+        # Add probabilistic bit flip for extra unpredictability
+        # Temperature, TILT, and BEAM add thermal/mechanical/detection noise
+        flip_chance = 0.02 + 0.06 * s3 + 0.05 * button_pressure + pot_flip + pir_jitter + temp_influence * 0.1 + tilt_influence * 0.15 + beam_influence * 0.12
+        if random.random() < flip_chance:
+            mixed ^= 1
+
+        final.append(mixed)
+
+    # -------------------------
+    # Output LEDs (normal)
+    # -------------------------
+    red.value(final[0] ^ pir_state)
+    amber.value(final[1] ^ pir_state)
+    green.value(final[2] ^ pir_state)
+
+    # -------------------------
+    # Day 5: Chaos audio output
+    # -------------------------
+    # Pick a frequency based on the fusion of chaos components.
+    # Piezo reacts to: logistic map + spinor + q-state + buttons + temp + tilt + beam
+    audio_base = 200 + int(x * 600)          # 200–800 Hz from logistic map
+    audio_spin = int((s0 + s1 + s2) * 300)   # spinor energy → harmonic lift
+    audio_quant = int(sum(q_bits) * 150)     # quantum states → resonance bumps
+    audio_buttons = int(button_pressure * 250)
+    audio_temp = int(temp_influence * 200)   # Day 8: temperature → thermal resonance
+    audio_tilt = int(tilt_influence * 300)   # Day 9: tilt/shake → mechanical resonance
+    audio_beam = int(beam_influence * 350)   # Day 10: beam break → detection spike
+
+    freq = audio_base + audio_spin + audio_quant + audio_buttons + audio_temp + audio_tilt + audio_beam
+
+    # Keep piezo in a sane range so the RP2040 doesn't brown-note itself
+    if freq < 100:
+        freq = 100
+    elif freq > 4000:     # 4 kHz max: still audible, not ultrasonic hell
+        freq = 4000
+    if pir_state:
+        freq += 200   # sudden motion = excite the system
+
+    piezo.freq(freq)
+
+    # Duty cycle:
+    #  - 0 if final chaos vector is all-zero  
+    #  - else we give it a jittery amplitude to keep it alive-sounding
+    if sum(final) == 0:
+        piezo.duty_u16(0)
+    else:
+        # 1–5% duty range is loud enough but safe
+        # jitter keeps the tone from sounding like a fixed beep
+        duty = 1000 + int(2000 * random.random())
+        piezo.duty_u16(duty)
+
+    # -------------------------
+    # Immediate PIR override (burst) — takes precedence for the burst duration
+    # -------------------------
+    # If a PIR rising edge occurred recently, make a short immediate flinch:
+    if time.ticks_diff(pir_burst_until, now) > 0:
+        # override LEDs to full-on flinch (you can change behavior here)
+        red.value(1)
+        amber.value(1)
+        green.value(1)
+        # make piezo screech briefly (bounded)
+        piezo.freq(1800)
+        piezo.duty_u16(3000)
+    # else keep the normal outputs (already set above)
+
+    # -------------------------
+    # Jitter — FASTER timing, aggressive pot control
+    # -------------------------
+    # EXTREMELY AGGRESSIVE pot control: very slow to extremely fast
+    # Pot at 0 (min) = 500ms (0.5 sec SLOW), Pot at 1 (max) = 0.1ms (EXTREMELY FAST)
+    max_delay = 0.5 - (pot_norm * 0.4999)   # 0.5s down to 0.0001s
+
+    # Apply small jitter variation to pot-controlled speed (±2%)
+    jitter_variation = max_delay * 0.02 * (random.random() - 0.5)
+    delay = max(0.0001, max_delay + jitter_variation)  # Keep minimum at 0.1ms
+
+    time.sleep(delay)
