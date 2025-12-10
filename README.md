@@ -1,2 +1,344 @@
-# 12-days-of-codemas_chaos
-A set of codes for each day of the 12 projects of codemas advent calander
+# 12 Days of Codemas - Chaos System
+
+A progressive MicroPython chaos system for Raspberry Pi Pico H, building up through 12 days of hardware additions. Each day adds new sensors and inputs that influence a unified chaos organism combining quantum oscillators, Dirac spinor modulation, logistic map chaos, and XOR entropy fusion.
+
+## Hardware Requirements
+
+- **Raspberry Pi Pico H** (RP2040)
+- MicroPython firmware installed
+- Half-size breadboard
+- Components listed below by day
+
+---
+
+## Day-by-Day Build Guide
+
+### Day 1: Basic Setup
+**File:** `day-1.py`
+
+**Components:**
+- Raspberry Pi Pico H
+- Breadboard
+- USB cable
+
+**Pin Mapping:**
+- GPIO 25: Built-in LED
+
+**Features:**
+- Simple LED blink test
+- Verifies Pico is working
+
+---
+
+### Day 2: LED Chaos Foundation
+**File:** `day-2.py`
+
+**Components:**
+- 3x LEDs (Red, Amber, Green)
+- 3x 330Ω resistors
+- 4x Jumper wires
+
+**Pin Mapping:**
+- GPIO 18: Red LED
+- GPIO 19: Amber LED
+- GPIO 20: Green LED
+- ADC27: Floating noise source
+
+**Features:**
+- Dirac spinor modulation (4 components)
+- Logistic map chaos
+- Quantum Rabi oscillator
+- Mutation with drift
+- 5 entropy sources: noise, chaos, mutation, quantum, spinor
+
+---
+
+### Day 3: Button Input
+**File:** `day-3.py`
+
+**Components:**
+- 3x Tactile buttons
+- 3x Button caps
+- Mini breadboard
+- 7x Jumper wires
+
+**Pin Mapping:**
+- GPIO 13: Button 1
+- GPIO 8: Button 2
+- GPIO 3: Button 3
+- (All with PULL_UP resistors)
+
+**Features:**
+- Buttons modulate Dirac spinor phase and amplitude
+- Button pressure affects chaos parameters
+- 6 entropy sources: adds button input to Day 2
+
+---
+
+### Day 4: Potentiometer Speed Control
+**File:** `day-4.py`
+
+**Components:**
+- 1x 10KΩ potentiometer
+- 1x Potentiometer knob
+- 3x Jumper wires
+
+**Pin Mapping:**
+- ADC26 (GPIO 26): Potentiometer
+
+**Features:**
+- **EXTREME speed control**: 0.5 sec/loop (slow) to 0.1 ms/loop (very fast)
+- Pot adds aggressive chaos influence
+- Time dilation effect on loop timing
+- Bit-flip energy control
+
+---
+
+### Day 5: Audio Feedback
+**File:** `day-5.py`
+
+**Components:**
+- 1x Piezo transducer with jumper wires
+
+**Pin Mapping:**
+- GPIO 15: Piezo PWM
+
+**Features:**
+- Chaos-driven audio (200-4000 Hz)
+- Frequency modulated by all chaos sources
+- Duty cycle varies with system state
+- Audible representation of entropy
+
+---
+
+### Day 6: Light Sensing
+**File:** `day-6.py`
+
+**Components:**
+- 1x Phototransistor
+- 1x 10KΩ resistor
+- 3x Jumper wires
+
+**Pin Mapping:**
+- ADC28 (GPIO 28): Phototransistor
+
+**Features:**
+- Light level → optical entropy bits
+- Brightness influences bit-flip probability
+- 7 entropy sources: adds optical randomness
+
+---
+
+### Day 7: Motion Detection
+**File:** `day-7.py`
+
+**Components:**
+- 1x Mini PIR sensor
+- 3x Jumper wires
+
+**Pin Mapping:**
+- GPIO 22: PIR motion sensor
+
+**Features:**
+- Motion detection with edge triggering
+- Burst mode on motion detection
+- PIR state XORed with LED outputs
+- Excites piezo frequency on motion
+
+---
+
+### Day 8: Temperature Sensing
+**File:** `day-8.py`
+
+**Components:**
+- 1x DS18B20 temperature sensor
+- 1x 4.7KΩ resistor
+- 3x Jumper wires
+
+**Pin Mapping:**
+- GPIO 16: DS18B20 (1-wire protocol)
+
+**Features:**
+- Non-blocking temperature reading (2-stage)
+- Thermal entropy bits
+- Temperature influences chaos, mutation, audio
+- Warmer = more chaotic
+- 8 entropy sources: adds thermal entropy
+
+---
+
+### Day 9: Tilt/Shake Detection
+**File:** `day-9.py`
+
+**Components:**
+- 1x Ball tilt switch
+- 4x Jumper wires
+
+**Pin Mapping:**
+- GPIO 21: Tilt switch
+
+**Features:**
+- Detects tilting/shaking
+- **Energy accumulation system**: builds up with shaking, decays over time
+- Mechanical entropy bits
+- Shake the Pico → chaos explosion!
+- 9 entropy sources: adds mechanical entropy
+
+---
+
+## Complete Pin Mapping Reference
+
+| GPIO | Component | Day | Type | Notes |
+|------|-----------|-----|------|-------|
+| 3 | Button 3 | 3 | Digital IN | PULL_UP |
+| 8 | Button 2 | 3 | Digital IN | PULL_UP |
+| 13 | Button 1 | 3 | Digital IN | PULL_UP |
+| 15 | Piezo | 5 | PWM OUT | 200-4000 Hz |
+| 16 | Temperature | 8 | 1-Wire | DS18B20 |
+| 18 | Red LED | 2 | Digital OUT | + 330Ω resistor |
+| 19 | Amber LED | 2 | Digital OUT | + 330Ω resistor |
+| 20 | Green LED | 2 | Digital OUT | + 330Ω resistor |
+| 21 | Tilt Switch | 9 | Digital IN | PULL_UP |
+| 22 | PIR Motion | 7 | Digital IN | Active HIGH |
+| 25 | Built-in LED | 1 | Digital OUT | On-board |
+| 26 (ADC0) | Potentiometer | 4 | Analog IN | 0-3.3V |
+| 27 (ADC1) | Noise Source | 2 | Analog IN | Floating |
+| 28 (ADC2) | Phototransistor | 6 | Analog IN | 0-3.3V |
+
+---
+
+## Chaos System Architecture
+
+### Entropy Sources (9 total)
+1. **Environmental Noise** (ADC27) - Random electrical noise
+2. **Logistic Map Chaos** - Deterministic chaos function
+3. **Mutation State** - Evolving bitfield memory
+4. **Quantum Oscillator** - Rabi-like phase oscillations
+5. **Dirac Spinor** - 4-component toy spinor modulation
+6. **Button Input** - User interaction (Day 3+)
+7. **Optical Randomness** - Light sensor (Day 6+)
+8. **Thermal Entropy** - Temperature variations (Day 8+)
+9. **Mechanical Entropy** - Tilt/shake detection (Day 9+)
+
+### Fusion Method
+All entropy bits are combined using XOR, with probabilistic bit-flipping influenced by:
+- Spinor components
+- Button pressure
+- Potentiometer position
+- PIR motion state
+- Temperature
+- Tilt energy
+
+### Output Channels
+- **3 LEDs**: Visual chaos patterns
+- **Piezo**: Audible frequency chaos (200-4000 Hz)
+- **Serial**: Debug output (tilt events, PIR triggers, temp readings)
+
+---
+
+## Speed Control (Potentiometer)
+
+The potentiometer provides extreme speed control:
+
+- **Pot at 0 (minimum)**: 500ms delay → ~2 loops/second (VERY SLOW)
+- **Pot at 1 (maximum)**: 0.1ms delay → ~10,000 loops/second (EXTREMELY FAST)
+- **Speed range**: 5000x difference!
+
+Turn left for slow, visible patterns. Turn right for blur of chaos.
+
+---
+
+## Special Features
+
+### Tilt Energy Accumulation (Day 9)
+- Each tilt/shake adds 0.3 energy (caps at 1.0)
+- Energy decays 2% per loop
+- Creates "burst and decay" chaos patterns
+- Shake violently → explosive chaos that calms down
+
+### Non-Blocking Temperature (Day 8)
+- 2-stage reading prevents 750ms blocking delay
+- Temperature read every 2 seconds
+- Continuous influence using cached value
+
+### PIR Burst Mode (Day 7)
+- Motion triggers 150ms "flinch" response
+- All LEDs flash, piezo screeches
+- Immediate reaction to movement
+
+---
+
+## Getting Started
+
+1. **Day 1**: Upload `day-1.py` to test basic hardware
+2. **Day 2-9**: Add components progressively, upload corresponding file
+3. **Run**: Each day's file is standalone and includes all previous components
+4. **Experiment**: Adjust pot for speed, shake for chaos, wave hand for PIR trigger
+
+---
+
+## Wiring Tips
+
+- Use color-coded jumper wires for easy debugging
+- Keep LED resistors close to the LEDs
+- Temperature sensor needs 4.7KΩ pull-up between data and 3.3V
+- Phototransistor needs 10KΩ pull-down resistor
+- Tilt switch works best with PULL_UP configuration
+
+---
+
+## Code Features
+
+- Manual shuffle implementation (MicroPython compatible)
+- No external dependencies beyond `machine` module
+- All files syntax-checked and optimized
+- Comments explain each chaos component
+- Debug prints for key events (PIR, tilt, temperature)
+
+---
+
+## Future Days (10-12)
+
+*Components to be added:*
+- Day 10: IR break beam sensors
+- Day 11: OLED display
+- Day 12: WS2812 RGB LED strip
+
+---
+
+## Troubleshooting
+
+**LEDs not lighting:**
+- Check resistor connections (330Ω)
+- Verify GPIO pins (18, 19, 20)
+- Test with day-1.py first
+
+**Pot not controlling speed:**
+- Verify ADC26 connection
+- Check pot is 10KΩ
+- Run day-4.py or later
+
+**Temperature not reading:**
+- Ensure 4.7KΩ resistor between data and 3.3V
+- Check GPIO 16 connection
+- Wait 2 seconds for first reading
+
+**Tilt not responding:**
+- Verify GPIO 21 connection
+- Check PULL_UP is working
+- Tilt should print "TILT CHANGE!" messages
+
+**Piezo too loud/quiet:**
+- Adjust duty cycle in code (1000-3000 range)
+- Check GPIO 15 PWM connection
+
+---
+
+## License
+
+Open source - use for educational and maker projects!
+
+## Credits
+
+12 Days of Codemas Advent Calendar Project
+MicroPython chaos system implementation
