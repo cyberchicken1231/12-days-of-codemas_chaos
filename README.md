@@ -186,6 +186,27 @@ A progressive MicroPython chaos system for Raspberry Pi Pico H, building up thro
 
 ---
 
+### Day 10: IR Beam Break Detection
+**File:** `day-10.py`
+
+**Components:**
+- 1x IR beam break sensor (emitter + receiver)
+- 1x 10KΩ resistor (external pull-up)
+- 4x Jumper wires
+
+**Pin Mapping:**
+- GPIO 17: Beam sensor signal (external pull-up)
+
+**Features:**
+- Detects beam interruption (0 = broken, 1 = clear)
+- **Energy accumulation with decay**: energy spike on break, fades slowly (1% per loop)
+- **Recency factor**: high influence for 2 seconds after break
+- Break counting for entropy generation
+- Wave hand through beam → chaos spike!
+- 10 entropy sources: adds detection entropy
+
+---
+
 ## Complete Pin Mapping Reference
 
 | GPIO | Component | Day | Type | Notes |
@@ -195,6 +216,7 @@ A progressive MicroPython chaos system for Raspberry Pi Pico H, building up thro
 | 13 | Button 1 | 3 | Digital IN | PULL_UP |
 | 15 | Piezo | 5 | PWM OUT | 200-4000 Hz |
 | 16 | Temperature | 8 | 1-Wire | DS18B20 |
+| 17 | Beam Break | 10 | Digital IN | External pull-up |
 | 18 | Red LED | 2 | Digital OUT | + 330Ω resistor |
 | 19 | Amber LED | 2 | Digital OUT | + 330Ω resistor |
 | 20 | Green LED | 2 | Digital OUT | + 330Ω resistor |
@@ -209,7 +231,7 @@ A progressive MicroPython chaos system for Raspberry Pi Pico H, building up thro
 
 ## Chaos System Architecture
 
-### Entropy Sources (9 total)
+### Entropy Sources (10 total)
 1. **Environmental Noise** (ADC27) - Random electrical noise
 2. **Logistic Map Chaos** - Deterministic chaos function
 3. **Mutation State** - Evolving bitfield memory
@@ -219,6 +241,7 @@ A progressive MicroPython chaos system for Raspberry Pi Pico H, building up thro
 7. **Optical Randomness** - Light sensor (Day 6+)
 8. **Thermal Entropy** - Temperature variations (Day 8+)
 9. **Mechanical Entropy** - Tilt/shake detection (Day 9+)
+10. **Detection Entropy** - Beam break events (Day 10+)
 
 ### Fusion Method
 All entropy bits are combined using XOR, with probabilistic bit-flipping influenced by:
@@ -297,10 +320,9 @@ Turn left for slow, visible patterns. Turn right for blur of chaos.
 
 ---
 
-## Future Days (10-12)
+## Future Days (11-12)
 
 *Components to be added:*
-- Day 10: IR break beam sensors
 - Day 11: OLED display
 - Day 12: WS2812 RGB LED strip
 
