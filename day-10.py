@@ -146,6 +146,7 @@ last_beam = 1
 beam_break_count = 0   # Total number of breaks
 beam_break_energy = 0.0  # Accumulated break energy (decays)
 last_beam_time = 0     # Time of last beam break
+beam_override_until = 0  # Override timestamp for beam break alarm
 
 # -------------------------
 # Chaos & mutation
@@ -302,6 +303,7 @@ while True:
         beam_break_count += 1
         beam_break_energy = min(1.0, beam_break_energy + 0.4)  # Big energy spike on break
         last_beam_time = now
+        beam_override_until = time.ticks_add(now, 500)  # Override for 500ms (0.5 sec alarm)
         print("BEAM BROKEN! Count:", beam_break_count, "Energy:", beam_break_energy)
     last_beam = beam_state
 
@@ -465,6 +467,19 @@ while True:
         # jitter keeps the tone from sounding like a fixed beep
         duty = 1000 + int(2000 * random.random())
         piezo.duty_u16(duty)
+
+    # -------------------------
+    # Beam break override (alarm) — takes precedence when beam is broken
+    # -------------------------
+    # If beam was broken recently, override LEDs and piezo for 0.5 second alarm
+    if time.ticks_diff(beam_override_until, now) > 0:
+        # All LEDs on (alarm state)
+        red.value(1)
+        amber.value(1)
+        green.value(1)
+        # Piezo scream (high frequency alarm)
+        piezo.freq(3500)
+        piezo.duty_u16(5000)
 
     # -------------------------
     # Immediate PIR override (burst) — takes precedence for the burst duration
