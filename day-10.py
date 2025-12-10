@@ -146,7 +146,6 @@ last_beam = 1
 beam_break_count = 0   # Total number of breaks
 beam_break_energy = 0.0  # Accumulated break energy (decays)
 last_beam_time = 0     # Time of last beam break
-beam_override_until = 0  # Override timestamp for beam break alarm
 
 # -------------------------
 # Chaos & mutation
@@ -298,12 +297,11 @@ while True:
     # -------------------------
     beam_state = beam.value()  # 0 = broken, 1 = clear
 
-    # Detect beam break (falling edge: clear -> broken)
+    # Count beam breaks (edge detection for counting only)
     if beam_state == 0 and last_beam == 1:
         beam_break_count += 1
         beam_break_energy = min(1.0, beam_break_energy + 0.4)  # Big energy spike on break
         last_beam_time = now
-        beam_override_until = time.ticks_add(now, 500)  # Override for 500ms (0.5 sec alarm)
         print("BEAM BROKEN! Count:", beam_break_count, "Energy:", beam_break_energy)
     last_beam = beam_state
 
@@ -471,8 +469,8 @@ while True:
     # -------------------------
     # Beam break override (alarm) — takes precedence when beam is broken
     # -------------------------
-    # If beam was broken recently, override LEDs and piezo for 0.5 second alarm
-    if time.ticks_diff(beam_override_until, now) > 0:
+    # If beam is currently broken, override LEDs and piezo
+    if beam.value() == 0:  # Beam is broken right now
         # All LEDs on (alarm state)
         red.value(1)
         amber.value(1)
