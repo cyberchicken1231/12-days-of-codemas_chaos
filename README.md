@@ -207,11 +207,34 @@ A progressive MicroPython chaos system for Raspberry Pi Pico H, building up thro
 
 ---
 
+### Day 11: OLED Display
+**File:** `day-11.py`
+
+**Components:**
+- 1x 128x32 I2C OLED display (SSD1306)
+- 4x Jumper wires
+
+**Pin Mapping:**
+- GPIO 6: I2C SDA (data)
+- GPIO 7: I2C SCL (clock)
+
+**Features:**
+- Real-time chaos parameter display
+- Line 1: Temperature and chaos value (X)
+- Line 2: Sensor states (Motion, Tilt, Beam) + frequency
+- Line 3: Current LED states (R/A/G)
+- Updates every loop cycle
+- Visual feedback for all system states
+
+---
+
 ## Complete Pin Mapping Reference
 
 | GPIO | Component | Day | Type | Notes |
 |------|-----------|-----|------|-------|
 | 3 | Button 3 | 3 | Digital IN | PULL_UP |
+| 6 | OLED SDA | 11 | I2C Data | SSD1306 128x32 |
+| 7 | OLED SCL | 11 | I2C Clock | 400kHz |
 | 8 | Button 2 | 3 | Digital IN | PULL_UP |
 | 13 | Button 1 | 3 | Digital IN | PULL_UP |
 | 15 | Piezo | 5 | PWM OUT | 200-4000 Hz |
@@ -320,10 +343,9 @@ Turn left for slow, visible patterns. Turn right for blur of chaos.
 
 ---
 
-## Future Days (11-12)
+## Future Days (12)
 
-*Components to be added:*
-- Day 11: OLED display
+*Component to be added:*
 - Day 12: WS2812 RGB LED strip
 
 ---
