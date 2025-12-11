@@ -529,13 +529,18 @@ while True:
     wave_buffer[wave_index] = wave_value
     wave_index = (wave_index + 1) % 128
 
-    # Draw scrolling waveform (bottom 8 pixels, y=24-31)
-    for i in range(128):
-        # Calculate buffer index for scrolling effect
-        buf_idx = (wave_index + i) % 128
-        wave_y = wave_buffer[buf_idx]
-        # Draw pixel from bottom up (y=31 is bottom)
-        oled.pixel(i, 31 - wave_y, 1)
+    # Draw scrolling waveform as connected line (bottom 8 pixels, y=24-31)
+    for i in range(127):  # Stop at 127 to avoid index out of range
+        # Calculate buffer indices for scrolling effect
+        buf_idx1 = (wave_index + i) % 128
+        buf_idx2 = (wave_index + i + 1) % 128
+
+        # Get two consecutive wave values
+        y1 = 31 - wave_buffer[buf_idx1]  # Draw from bottom up
+        y2 = 31 - wave_buffer[buf_idx2]
+
+        # Draw line between consecutive points
+        oled.line(i, y1, i + 1, y2, 1)
 
     oled.show()  # Update display
 
