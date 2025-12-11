@@ -507,16 +507,28 @@ while True:
     # -------------------------
     # Day 11: Update OLED display
     # -------------------------
+
+    # Calculate delay and clock speed first (for display)
+    max_delay = 0.5 - (pot_norm * 0.4999)   # 0.5s down to 0.0001s
+    jitter_variation = max_delay * 0.02 * (random.random() - 0.5)
+    delay = max(0.0001, max_delay + jitter_variation)  # Keep minimum at 0.1ms
+    clock_speed = int(1.0 / delay)  # Hz
+
+    # Calculate bit flip percentage (0-100)
+    bit_flip_pct = int(flip_chance * 100)
+
     oled.fill(0)  # Clear display
 
-    # Line 1: Compact temp and chaos (y=0)
+    # Line 1: Compact temp and chaos (y=0) + Clock speed on right
     oled.text("T:{:.0f} X:{:.2f}".format(current_temp, x), 0, 0)
+    oled.text("C:{}".format(clock_speed), 88, 0)  # Right side
 
-    # Line 2: Sensors + freq (y=8)
+    # Line 2: Sensors + freq (y=8) + Bit flip on right
     m = "M" if pir_state else "."
     t = "T" if tilt_state == 0 else "."
     b = "B" if beam_state == 0 else "."
     oled.text("{}{}{} {}Hz".format(m, t, b, freq), 0, 8)
+    oled.text("B:{}".format(bit_flip_pct), 96, 8)  # Right side
 
     # Line 3: LED states (y=16)
     r = "R" if red.value() else "."
@@ -547,12 +559,5 @@ while True:
     # -------------------------
     # Jitter — FASTER timing, aggressive pot control
     # -------------------------
-    # EXTREMELY AGGRESSIVE pot control: very slow to extremely fast
-    # Pot at 0 (min) = 500ms (0.5 sec SLOW), Pot at 1 (max) = 0.1ms (EXTREMELY FAST)
-    max_delay = 0.5 - (pot_norm * 0.4999)   # 0.5s down to 0.0001s
-
-    # Apply small jitter variation to pot-controlled speed (±2%)
-    jitter_variation = max_delay * 0.02 * (random.random() - 0.5)
-    delay = max(0.0001, max_delay + jitter_variation)  # Keep minimum at 0.1ms
-
+    # Delay was already calculated before display update
     time.sleep(delay)
