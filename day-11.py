@@ -154,6 +154,10 @@ last_beam_time = 0     # Time of last beam break
 i2c = I2C(1, scl=Pin(7), sda=Pin(6), freq=400000)  # I2C1 on GPIO 6/7
 oled = SSD1306_I2C(128, 32, i2c)  # 128x32 pixel display
 
+# Waveform buffer for display (scrolling graph)
+wave_buffer = [0] * 128  # 128 pixels wide
+wave_index = 0
+
 # -------------------------
 # Chaos & mutation
 # -------------------------
@@ -505,22 +509,33 @@ while True:
     # -------------------------
     oled.fill(0)  # Clear display
 
-    # Line 1: Temp and chaos value
-    oled.text("T:{:.1f}C X:{:.2f}".format(current_temp, x), 0, 0)
+    # Line 1: Compact temp and chaos (y=0)
+    oled.text("T:{:.0f} X:{:.2f}".format(current_temp, x), 0, 0)
 
-    # Line 2: Sensor states (M=Motion, T=Tilt, B=Beam)
-    m_char = "M" if pir_state else "-"
-    t_char = "T" if tilt_state == 0 else "-"
-    b_char = "B" if beam_state == 0 else "-"
-    oled.text("{} {} {} F:{}Hz".format(m_char, t_char, b_char, freq), 0, 10)
+    # Line 2: Sensors + freq (y=8)
+    m = "M" if pir_state else "."
+    t = "T" if tilt_state == 0 else "."
+    b = "B" if beam_state == 0 else "."
+    oled.text("{}{}{} {}Hz".format(m, t, b, freq), 0, 8)
 
-    # Line 3: LED states (visual feedback)
-    led_str = "LED: {} {} {}".format(
-        "R" if red.value() else "-",
-        "A" if amber.value() else "-",
-        "G" if green.value() else "-"
-    )
-    oled.text(led_str, 0, 20)
+    # Line 3: LED states (y=16)
+    r = "R" if red.value() else "."
+    a = "A" if amber.value() else "."
+    g = "G" if green.value() else "."
+    oled.text("LED:{}{}{}".format(r, a, g), 0, 16)
+
+    # Update wave buffer with chaos value (normalized to 0-7 for 8-pixel height)
+    wave_value = int(x * 7)  # 0-7 pixels
+    wave_buffer[wave_index] = wave_value
+    wave_index = (wave_index + 1) % 128
+
+    # Draw scrolling waveform (bottom 8 pixels, y=24-31)
+    for i in range(128):
+        # Calculate buffer index for scrolling effect
+        buf_idx = (wave_index + i) % 128
+        wave_y = wave_buffer[buf_idx]
+        # Draw pixel from bottom up (y=31 is bottom)
+        oled.pixel(i, 31 - wave_y, 1)
 
     oled.show()  # Update display
 
