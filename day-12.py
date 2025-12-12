@@ -573,9 +573,11 @@ while True:
         buf_idx = (wave_index + i * (128 // NUM_LEDS)) % 128
         wave_height = wave_buffer[buf_idx]  # 0-7
 
-        # Light up LED if wave is high enough for this position
-        # Map 0-7 wave height to 0-NUM_LEDS for better visualization
-        scaled_height = int((wave_height / 7.0) * NUM_LEDS)
+        # Boost and scale: amplify waveform to use full 15 LED height
+        # Add base offset and amplify the wave value
+        boosted_height = wave_height + 3  # Add 3 to minimum (raises floor)
+        scaled_height = int((boosted_height / 10.0) * NUM_LEDS)  # Scale to full strip
+        scaled_height = min(NUM_LEDS, scaled_height)  # Cap at max LEDs
 
         if i < scaled_height:
             # LED is ON - gradient from blue (bottom) to purple/red (top)
