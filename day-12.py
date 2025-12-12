@@ -564,29 +564,28 @@ while True:
     oled.show()  # Update display
 
     # -------------------------
-    # Day 12: Update WS2812 LED Strip
+    # Day 12: Update WS2812 LED Strip (Waveform Bar Graph)
     # -------------------------
+    # Display waveform as vertical bar graph
     for i in range(NUM_LEDS):
-        # Map different chaos sources to RGB channels
-        # R: Chaos value + spinor
-        r_val = int((x * 128) + (s0 * 127))
-        r_val = max(0, min(255, r_val))
+        # Get waveform value for this LED position
+        # Sample from wave_buffer (spread across 128 buffer)
+        buf_idx = (wave_index + i * (128 // NUM_LEDS)) % 128
+        wave_height = wave_buffer[buf_idx]  # 0-7
 
-        # G: Quantum phase + buttons
-        g_val = int((math.sin(quantum_phase + i) ** 2) * 200 + button_pressure * 55)
-        g_val = max(0, min(255, g_val))
+        # Light up LED if wave is high enough for this position
+        # Map 0-7 wave height to 0-NUM_LEDS for better visualization
+        scaled_height = int((wave_height / 7.0) * NUM_LEDS)
 
-        # B: Temperature + tilt + beam
-        b_val = int(temp_influence * 100 + tilt_energy * 100 + beam_break_energy * 55)
-        b_val = max(0, min(255, b_val))
-
-        # Apply sensor overrides
-        if beam_state == 0:  # Beam broken - all red
-            strip[i] = (255, 0, 0)
-        elif pir_state:  # Motion - all white
-            strip[i] = (255, 255, 255)
-        else:  # Normal chaos colors
-            strip[i] = (r_val, g_val, b_val)
+        if i < scaled_height:
+            # LED is ON - gradient from blue (bottom) to purple/red (top)
+            r = int(i * (200 / NUM_LEDS))      # More red toward top
+            g = 0
+            b = int(200 - i * (150 / NUM_LEDS))  # More blue toward bottom
+            strip[i] = (r, g, b)
+        else:
+            # LED is OFF
+            strip[i] = (0, 0, 0)
 
     strip.write()  # Update the strip
 
