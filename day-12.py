@@ -162,7 +162,7 @@ wave_index = 0
 # -------------------------
 # Day 12: WS2812 RGB LED Strip
 # -------------------------
-NUM_LEDS = 8  # 8 LEDs on the strip
+NUM_LEDS = 15  # 8 LEDs on the strip
 strip = neopixel.NeoPixel(Pin(14), NUM_LEDS)  # GPIO 14 (physical pin 19)
 
 # -------------------------
