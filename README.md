@@ -228,6 +228,32 @@ A progressive MicroPython chaos system for Raspberry Pi Pico H, building up thro
 
 ---
 
+### Day 12: WS2812 RGB LED Strip (FINAL DAY!)
+**File:** `day-12.py`
+
+**Components:**
+- 1x WS2812 RGB LED strip (8 LEDs)
+- 3x Jumper wires
+- Optional: 470Ω resistor for data line protection
+- Optional: 1000µF capacitor across power
+
+**Pin Mapping:**
+- GPIO 14: WS2812 Data (DIN)
+
+**Features:**
+- 8 individually addressable RGB LEDs
+- **Color mapping:**
+  - Red: Chaos value + Dirac spinor
+  - Green: Quantum phase + button input
+  - Blue: Temperature + tilt + beam energy
+- **Override modes:**
+  - Beam broken: All LEDs pure red alarm
+  - Motion detected: All LEDs white flash
+- Real-time chaos rainbow visualization
+- **COMPLETE 12 DAYS BUILD!**
+
+---
+
 ## Complete Pin Mapping Reference
 
 | GPIO | Component | Day | Type | Notes |
@@ -237,6 +263,7 @@ A progressive MicroPython chaos system for Raspberry Pi Pico H, building up thro
 | 7 | OLED SCL | 11 | I2C Clock | 400kHz |
 | 8 | Button 2 | 3 | Digital IN | PULL_UP |
 | 13 | Button 1 | 3 | Digital IN | PULL_UP |
+| 14 | WS2812 Data | 12 | Digital OUT | RGB LED strip |
 | 15 | Piezo | 5 | PWM OUT | 200-4000 Hz |
 | 16 | Temperature | 8 | 1-Wire | DS18B20 |
 | 17 | Beam Break | 10 | Digital IN | External pull-up |
@@ -343,10 +370,15 @@ Turn left for slow, visible patterns. Turn right for blur of chaos.
 
 ---
 
-## Future Days (12)
+## 12 Days Complete!
 
-*Component to be added:*
-- Day 12: WS2812 RGB LED strip
+**All 12 days have been implemented!** The chaos system is now complete with:
+- 10 entropy sources feeding the chaos engine
+- Real-time OLED visualization
+- RGB LED strip showing chaos colors
+- Full sensor suite (buttons, pot, temp, motion, tilt, beam)
+- Audio chaos output via piezo
+- Progressive build from simple blink to full multi-sensor system
 
 ---
 
