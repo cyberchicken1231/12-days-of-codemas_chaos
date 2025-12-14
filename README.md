@@ -254,10 +254,31 @@ A progressive MicroPython chaos system for Raspberry Pi Pico H, building up thro
 
 ---
 
+### Day 13: Red Diffused LED (Let It Glow!)
+**File:** `day-13.py`
+
+**Components:**
+- 1x 15mm diffused red LED
+- 1x 100Ω resistor
+- 2x Male-to-male jumper wires
+
+**Pin Mapping:**
+- GPIO 0: Red LED output (+ 100Ω resistor)
+
+**Features:**
+- **Chaos intensity indicator** - lights when chaos is high
+- Combines chaos value (x) + beam energy + tilt energy
+- Threshold trigger at 50% intensity
+- Visual feedback for system activity level
+- Complements existing 3-LED chaos indicators
+
+---
+
 ## Complete Pin Mapping Reference
 
 | GPIO | Component | Day | Type | Notes |
 |------|-----------|-----|------|-------|
+| 0 | Red Diffused LED | 13 | Digital OUT | + 100Ω resistor |
 | 3 | Button 3 | 3 | Digital IN | PULL_UP |
 | 6 | OLED SDA | 11 | I2C Data | SSD1306 128x32 |
 | 7 | OLED SCL | 11 | I2C Clock | 400kHz |
