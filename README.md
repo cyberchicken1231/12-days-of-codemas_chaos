@@ -254,14 +254,90 @@ A progressive MicroPython chaos system for Raspberry Pi Pico H, building up thro
 
 ---
 
+### Day 13: Red Diffused LED (Let It Glow!)
+**File:** `day-13.py`
+
+**Components:**
+- 1x 15mm diffused red LED
+- 1x 100Ω resistor
+- 2x Male-to-male jumper wires
+
+**Pin Mapping:**
+- GPIO 0: Red LED output (+ 100Ω resistor)
+
+**Features:**
+- **Chaos intensity indicator** - lights when chaos is high
+- Combines chaos value (x) + beam energy + tilt energy
+- Threshold trigger at 50% intensity
+- Visual feedback for system activity level
+- Complements existing 3-LED chaos indicators
+
+---
+
+### Day 14: Two Additional Buttons (Let It Glow)
+**File:** `day-14.py`
+
+**Components:**
+- 2x 12mm square tactile buttons
+- 2x Colorful button caps
+- 5x Male-to-male jumper wires
+
+**Pin Mapping:**
+- GPIO 1: Button 4 (PULL_UP)
+- GPIO 2: Button 5 (PULL_UP)
+
+**Features:**
+- **5 total buttons** for chaos control (3 original + 2 new)
+- Combined button pressure calculation
+- New buttons influence:
+  - Red LED chaos intensity indicator
+  - Future chaos parameters
+- Colorful caps for easy identification
+- Active LOW with internal pull-up
+
+---
+
+### Day 15: 5-Segment Bar Graph Display (Let It Glow)
+**File:** `day-15.py`
+
+**Components:**
+- 1x 5-segment bar graph LED display
+- 1x Network resistor (typically 220Ω or 330Ω)
+- 6x Male-to-male jumper wires
+
+**Pin Mapping:**
+- GPIO 4: Segment 1 (lowest/first LED)
+- GPIO 5: Segment 2
+- GPIO 9: Segment 3 (middle)
+- GPIO 10: Segment 4
+- GPIO 11: Segment 5 (highest/last LED)
+
+**Features:**
+- **Visual chaos intensity meter** - bar fills based on chaos level
+- 0-5 segments light up proportionally (0.0-1.0 range)
+- Displays same chaos_intensity as red LED threshold
+- Bar fills from bottom to top
+- Real-time analog-style visualization
+- Network resistor connects all cathodes to GND
+
+---
+
 ## Complete Pin Mapping Reference
 
 | GPIO | Component | Day | Type | Notes |
 |------|-----------|-----|------|-------|
+| 0 | Red Diffused LED | 13 | Digital OUT | + 100Ω resistor |
+| 1 | Button 4 | 14 | Digital IN | PULL_UP |
+| 2 | Button 5 | 14 | Digital IN | PULL_UP |
 | 3 | Button 3 | 3 | Digital IN | PULL_UP |
+| 4 | Bar Graph Seg 1 | 15 | Digital OUT | Network resistor |
+| 5 | Bar Graph Seg 2 | 15 | Digital OUT | Network resistor |
 | 6 | OLED SDA | 11 | I2C Data | SSD1306 128x32 |
 | 7 | OLED SCL | 11 | I2C Clock | 400kHz |
 | 8 | Button 2 | 3 | Digital IN | PULL_UP |
+| 9 | Bar Graph Seg 3 | 15 | Digital OUT | Network resistor |
+| 10 | Bar Graph Seg 4 | 15 | Digital OUT | Network resistor |
+| 11 | Bar Graph Seg 5 | 15 | Digital OUT | Network resistor |
 | 13 | Button 1 | 3 | Digital IN | PULL_UP |
 | 14 | WS2812 Data | 12 | Digital OUT | RGB LED strip |
 | 15 | Piezo | 5 | PWM OUT | 200-4000 Hz |
