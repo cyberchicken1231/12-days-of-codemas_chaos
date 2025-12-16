@@ -201,7 +201,7 @@ wave_index = 0
 # -------------------------
 # Day 12: WS2812 RGB LED Strip
 # -------------------------
-NUM_LEDS = 8  # 8 LEDs on the strip
+NUM_LEDS = 15  # 15 LEDs on the strip
 strip = neopixel.NeoPixel(Pin(14), NUM_LEDS)  # GPIO 14 (physical pin 19)
 
 # -------------------------
@@ -265,6 +265,7 @@ while True:
     # -------------------------
     pot_raw = pot.read_u16()
     pot_norm = pot_raw / 65535.0      # 0.0 → 1.0
+    print("POT RAW:", pot_raw, "NORM:", pot_norm)
 
     # -------------------------
     # Day 6: Phototransistor noise
@@ -582,6 +583,7 @@ while True:
     jitter_variation = max_delay * 0.02 * (random.random() - 0.5)
     delay = max(0.0001, max_delay + jitter_variation)  # Keep minimum at 0.1ms
     clock_speed = int(1.0 / delay)  # Hz
+    print("DELAY:", delay, "s  CLOCK:", clock_speed, "Hz")
 
     # Calculate bit flip percentage (0-100)
     bit_flip_pct = int(flip_chance * 100)
