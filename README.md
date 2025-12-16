@@ -274,11 +274,36 @@ A progressive MicroPython chaos system for Raspberry Pi Pico H, building up thro
 
 ---
 
+### Day 14: Two Additional Buttons (Let It Glow)
+**File:** `day-14.py`
+
+**Components:**
+- 2x 12mm square tactile buttons
+- 2x Colorful button caps
+- 5x Male-to-male jumper wires
+
+**Pin Mapping:**
+- GPIO 1: Button 4 (PULL_UP)
+- GPIO 2: Button 5 (PULL_UP)
+
+**Features:**
+- **5 total buttons** for chaos control (3 original + 2 new)
+- Combined button pressure calculation
+- New buttons influence:
+  - Red LED chaos intensity indicator
+  - Future chaos parameters
+- Colorful caps for easy identification
+- Active LOW with internal pull-up
+
+---
+
 ## Complete Pin Mapping Reference
 
 | GPIO | Component | Day | Type | Notes |
 |------|-----------|-----|------|-------|
 | 0 | Red Diffused LED | 13 | Digital OUT | + 100Ω resistor |
+| 1 | Button 4 | 14 | Digital IN | PULL_UP |
+| 2 | Button 5 | 14 | Digital IN | PULL_UP |
 | 3 | Button 3 | 3 | Digital IN | PULL_UP |
 | 6 | OLED SDA | 11 | I2C Data | SSD1306 128x32 |
 | 7 | OLED SCL | 11 | I2C Clock | 400kHz |
