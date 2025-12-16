@@ -508,8 +508,9 @@ while True:
     # -------------------------
     # Day 15: Update 5-segment bar graph
     # -------------------------
-    # Display chaos intensity as bar graph (0-5 segments)
-    update_bar_graph(chaos_intensity)
+    # Display chaos value as bar graph (0-5 segments)
+    # Use raw chaos value x (0-1) for better visualization
+    update_bar_graph(x)
 
     # -------------------------
     # Day 5: Chaos audio output
