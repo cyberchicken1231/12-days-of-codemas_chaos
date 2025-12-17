@@ -8,8 +8,10 @@
 #
 # UART Wiring:
 # - Main GP12 (TX) --> Slave GP1 (RX)  [Physical pin 16 -> pin 2]
-# - Main GP24 (RX) --> Slave GP0 (TX)  [Physical pin 29 -> pin 1]
+# - Main GP13 (RX) --> Slave GP0 (TX)  [Physical pin 17 -> pin 1]
 # - GND --> GND (common ground required)
+#
+# Note: Original 3 buttons (Day 3) removed to free GPIO pins
 
 from machine import Pin, ADC, I2C, UART
 import time
@@ -24,8 +26,8 @@ import neopixel
 # Day 16: UART to GPIO Expander Pico
 # -------------------------
 # Initialize UART0 for communication with slave Pico
-# Using GP12 (TX) and GP24 (RX) to avoid conflict with Button 1 on GP13
-uart_expander = UART(0, baudrate=9600, tx=Pin(12), rx=Pin(24))
+# Using GP12 (TX) and GP13 (RX) - original buttons removed
+uart_expander = UART(0, baudrate=9600, tx=Pin(12), rx=Pin(13))
 
 def read_dip_switch():
     """Read DIP switch state from slave Pico via UART
@@ -158,17 +160,14 @@ piezo.duty_u16(0)    # start silent
 noise = ADC(27)
 
 # -------------------------
-# Day 3: Buttons
+# Day 3: Buttons (REMOVED - GPIO freed for UART)
 # -------------------------
-button_pins = [13, 8, 3]
-buttons = [Pin(p, Pin.IN, Pin.PULL_UP) for p in button_pins]
+# Original 3 buttons removed to free GP3, GP8, GP13 for other uses
+# GP13 now used for UART RX to slave Pico
 
 def read_buttons():
-    return [
-        0 if buttons[0].value() else 1,
-        0 if buttons[1].value() else 1,
-        0 if buttons[2].value() else 1,
-    ]
+    """Return dummy button values (all OFF) since original buttons removed"""
+    return [0, 0, 0]
 
 # -------------------------
 # Day 14: Two More Buttons (Let It Glow)

@@ -333,8 +333,10 @@ A progressive MicroPython chaos system for Raspberry Pi Pico H, building up thro
 
 **Main Pico Pin Mapping:**
 - GPIO 12: UART TX to slave Pico (Physical pin 16)
-- GPIO 24: UART RX from slave Pico (Physical pin 29)
+- GPIO 13: UART RX from slave Pico (Physical pin 17)
 - GND: Common ground with slave Pico
+
+**⚠️ Hardware Change:** Original 3 buttons from Day 3 (GP3, GP8, GP13) removed to free GPIO pins for UART. System now uses only 2 buttons (Day 14: GP1, GP2).
 
 **Slave Pico Pin Mapping:**
 - GPIO 0: UART TX to main Pico (Physical pin 1)
@@ -361,7 +363,7 @@ A progressive MicroPython chaos system for Raspberry Pi Pico H, building up thro
 Main Pico          Slave Pico
 ---------          ----------
 GP12 (TX) -------> GP1 (RX)
-GP24 (RX) <------- GP0 (TX)
+GP13 (RX) <------- GP0 (TX)
 GND <------------> GND
 ```
 
@@ -379,17 +381,17 @@ GND <------------> GND
 | 0 | Red Diffused LED | 13 | Digital OUT | + 100Ω resistor |
 | 1 | Button 4 | 14 | Digital IN | PULL_UP |
 | 2 | Button 5 | 14 | Digital IN | PULL_UP |
-| 3 | Button 3 | 3 | Digital IN | PULL_UP |
+| 3 | ~~Button 3~~ (removed) | ~~3~~ | - | Freed for expansion |
 | 4 | Bar Graph Seg 1 | 15 | Digital OUT | Network resistor |
 | 5 | Bar Graph Seg 2 | 15 | Digital OUT | Network resistor |
 | 6 | OLED SDA | 11 | I2C Data | SSD1306 128x32 |
 | 7 | OLED SCL | 11 | I2C Clock | 400kHz |
-| 8 | Button 2 | 3 | Digital IN | PULL_UP |
+| 8 | ~~Button 2~~ (removed) | ~~3~~ | - | Freed for expansion |
 | 9 | Bar Graph Seg 3 | 15 | Digital OUT | Network resistor |
 | 10 | Bar Graph Seg 4 | 15 | Digital OUT | Network resistor |
 | 11 | Bar Graph Seg 5 | 15 | Digital OUT | Network resistor |
 | 12 | UART TX (to slave) | 16 | UART TX | 9600 baud to slave Pico |
-| 13 | Button 1 | 3 | Digital IN | PULL_UP |
+| 13 | UART RX (from slave) | 16 | UART RX | 9600 baud from slave Pico |
 | 14 | WS2812 Data | 12 | Digital OUT | RGB LED strip |
 | 15 | Piezo | 5 | PWM OUT | 200-4000 Hz |
 | 16 | Temperature | 8 | 1-Wire | DS18B20 |
@@ -399,7 +401,6 @@ GND <------------> GND
 | 20 | Green LED | 2 | Digital OUT | + 330Ω resistor |
 | 21 | Tilt Switch | 9 | Digital IN | PULL_UP |
 | 22 | PIR Motion | 7 | Digital IN | Active HIGH |
-| 24 | UART RX (from slave) | 16 | UART RX | 9600 baud from slave Pico |
 | 25 | Built-in LED | 1 | Digital OUT | On-board |
 | 26 (ADC0) | Potentiometer | 4 | Analog IN | 0-3.3V |
 | 27 (ADC1) | Noise Source | 2 | Analog IN | Floating |
