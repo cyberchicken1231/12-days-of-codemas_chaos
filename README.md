@@ -322,6 +322,58 @@ A progressive MicroPython chaos system for Raspberry Pi Pico H, building up thro
 
 ---
 
+### Day 16: Dual-Pico GPIO Expansion - 5-Way DIP Switch (Let It Glow)
+**Files:** `day-16.py` (main), `gpio_expander_slave.py` (second Pico)
+
+**Components:**
+- 1x Additional Raspberry Pi Pico H (GPIO expander)
+- 1x 5-way DIP switch
+- 3x Male-to-male jumper wires (UART connection)
+- 5x Jumper wires for DIP switch
+
+**Main Pico Pin Mapping:**
+- GPIO 12: UART TX to slave Pico (Physical pin 16)
+- GPIO 13: UART RX from slave Pico (Physical pin 17)
+- GND: Common ground with slave Pico
+
+**⚠️ Hardware Change:** Original 3 buttons from Day 3 (GP3, GP8, GP13) removed to free GPIO pins for UART. System now uses only 2 buttons (Day 14: GP1, GP2).
+
+**Slave Pico Pin Mapping:**
+- GPIO 0: UART TX to main Pico (Physical pin 1)
+- GPIO 1: UART RX from main Pico (Physical pin 2)
+- GPIO 2-6: DIP switch inputs (Physical pins 4-9)
+- GND: Common ground with main Pico
+
+**Features:**
+- **GPIO expansion** - Second Pico provides 16 additional GPIOs via UART
+- **5-way DIP switch** - Manual configuration switches
+- **UART communication** - Simple request-response protocol at 9600 baud
+- **DIP switch entropy** - Switch state adds 11th chaos source
+- **Real-time polling** - Main Pico requests switch state each loop
+- **Failsafe design** - Returns all-OFF state on timeout
+- **OLED display** - Shows DIP switch count (0-5) on screen
+
+**Protocol:**
+- Main sends 'R' (Read request)
+- Slave responds with 1 byte (5 bits = switch states)
+- 100ms timeout for reliability
+
+**Wiring:**
+```
+Main Pico          Slave Pico
+---------          ----------
+GP12 (TX) -------> GP1 (RX)
+GP13 (RX) <------- GP0 (TX)
+GND <------------> GND
+```
+
+**DIP Switch Wiring (on Slave Pico):**
+- Each switch connects GPIO to GND when ON
+- Internal pull-ups: HIGH = OFF, LOW = ON
+- Compact 5-switch package
+
+---
+
 ## Complete Pin Mapping Reference
 
 | GPIO | Component | Day | Type | Notes |
@@ -329,16 +381,17 @@ A progressive MicroPython chaos system for Raspberry Pi Pico H, building up thro
 | 0 | Red Diffused LED | 13 | Digital OUT | + 100Ω resistor |
 | 1 | Button 4 | 14 | Digital IN | PULL_UP |
 | 2 | Button 5 | 14 | Digital IN | PULL_UP |
-| 3 | Button 3 | 3 | Digital IN | PULL_UP |
+| 3 | ~~Button 3~~ (removed) | ~~3~~ | - | Freed for expansion |
 | 4 | Bar Graph Seg 1 | 15 | Digital OUT | Network resistor |
 | 5 | Bar Graph Seg 2 | 15 | Digital OUT | Network resistor |
 | 6 | OLED SDA | 11 | I2C Data | SSD1306 128x32 |
 | 7 | OLED SCL | 11 | I2C Clock | 400kHz |
-| 8 | Button 2 | 3 | Digital IN | PULL_UP |
+| 8 | ~~Button 2~~ (removed) | ~~3~~ | - | Freed for expansion |
 | 9 | Bar Graph Seg 3 | 15 | Digital OUT | Network resistor |
 | 10 | Bar Graph Seg 4 | 15 | Digital OUT | Network resistor |
 | 11 | Bar Graph Seg 5 | 15 | Digital OUT | Network resistor |
-| 13 | Button 1 | 3 | Digital IN | PULL_UP |
+| 12 | UART TX (to slave) | 16 | UART TX | 9600 baud to slave Pico |
+| 13 | UART RX (from slave) | 16 | UART RX | 9600 baud from slave Pico |
 | 14 | WS2812 Data | 12 | Digital OUT | RGB LED strip |
 | 15 | Piezo | 5 | PWM OUT | 200-4000 Hz |
 | 16 | Temperature | 8 | 1-Wire | DS18B20 |
@@ -357,7 +410,7 @@ A progressive MicroPython chaos system for Raspberry Pi Pico H, building up thro
 
 ## Chaos System Architecture
 
-### Entropy Sources (10 total)
+### Entropy Sources (11 total)
 1. **Environmental Noise** (ADC27) - Random electrical noise
 2. **Logistic Map Chaos** - Deterministic chaos function
 3. **Mutation State** - Evolving bitfield memory
@@ -368,6 +421,7 @@ A progressive MicroPython chaos system for Raspberry Pi Pico H, building up thro
 8. **Thermal Entropy** - Temperature variations (Day 8+)
 9. **Mechanical Entropy** - Tilt/shake detection (Day 9+)
 10. **Detection Entropy** - Beam break events (Day 10+)
+11. **Configuration Entropy** - DIP switch settings (Day 16+)
 
 ### Fusion Method
 All entropy bits are combined using XOR, with probabilistic bit-flipping influenced by:
@@ -377,6 +431,8 @@ All entropy bits are combined using XOR, with probabilistic bit-flipping influen
 - PIR motion state
 - Temperature
 - Tilt energy
+- Beam break energy
+- DIP switch configuration
 
 ### Output Channels
 - **3 LEDs**: Visual chaos patterns
