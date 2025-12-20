@@ -268,29 +268,51 @@ rgb_led0 = neopixel.NeoPixel(Pin(3), 1)  # GPIO 3 (physical pin 5) - Chaos LED o
 # -------------------------
 # Day 18: 12-LED RGB Ring (Let It Glow)
 # -------------------------
-# 12x WS2812 RGB LEDs in ring formation on GPIO 8 (freed from Button 2)
-ring = neopixel.NeoPixel(Pin(8), 12)  # GPIO 8 (physical pin 11) - 12 LEDs
+# 12x WS2812 RGB LEDs in ring formation on Slave Pico GP8 (physical pin 12)
+# Controlled via UART commands
+
+def send_ring_pattern(hue_offset, brightness):
+    """Send ring pattern command to slave Pico
+    Protocol: 'N' + hue_offset (0-255) + brightness (0-255)
+    """
+    try:
+        # Convert hue (0-360) to byte (0-255)
+        hue_byte = int((hue_offset % 360) / 360.0 * 255)
+        brightness_byte = int(brightness * 255)
+        brightness_byte = max(0, min(255, brightness_byte))  # Clamp to 0-255
+
+        # Send ring command: 'N' followed by 2 bytes
+        uart_expander.write(b'N')
+        uart_expander.write(bytes([hue_byte, brightness_byte]))
+
+        # Wait for confirmation (optional, with timeout)
+        start = time.ticks_ms()
+        while not uart_expander.any():
+            if time.ticks_diff(time.ticks_ms(), start) > 50:  # 50ms timeout
+                return False
+            time.sleep_ms(1)
+
+        # Read confirmation
+        if uart_expander.any():
+            conf = uart_expander.read(1)
+            return conf == b'K'
+        return False
+    except:
+        return False
 
 def update_ring(chaos_val, spinor, button_pressure):
-    """Update 12-LED ring with rotating patterns
+    """Update 12-LED ring with rotating patterns via UART
     Creates spinning rainbow effect driven by chaos
     """
-    # Rotating rainbow based on chaos value and time
-    offset = int((chaos_val + spinor[0]) * 12) % 12  # Rotation offset
+    # Calculate hue offset based on chaos and spinor (0-360 degrees)
+    hue_offset = ((chaos_val + spinor[0]) * 360) % 360
 
-    for i in range(12):
-        # Calculate hue for this LED (360 degrees / 12 LEDs = 30 degrees per LED)
-        hue = ((i + offset) * 30) % 360
+    # Brightness varies with button pressure and spinor energy
+    brightness = 0.3 + (button_pressure * 0.3) + (abs(spinor[1]) * 0.2)
+    brightness = min(1.0, brightness)  # Cap at 1.0
 
-        # Brightness varies with button pressure and spinor energy
-        brightness = 0.3 + (button_pressure * 0.3) + (abs(spinor[1]) * 0.2)
-        brightness = min(1.0, brightness)  # Cap at 1.0
-
-        # Convert to RGB
-        r, g, b = hsv_to_rgb(hue, 1.0, brightness)
-        ring[i] = (r, g, b)
-
-    ring.write()
+    # Send pattern to slave Pico
+    send_ring_pattern(hue_offset, brightness)
 
 def send_rgb_color(r, g, b):
     """Send RGB color command to slave Pico for LED 1
@@ -845,6 +867,12 @@ while True:
     # LED 0: Chaos rainbow (cycles through hue)
     # LED 1: Sensor activity (warm=active, cool=calm)
     update_rgb_leds(x, dip_switch_value, tilt_energy, beam_break_energy)
+
+    # -------------------------
+    # Day 18: Update 12-LED RGB Ring
+    # -------------------------
+    # Rotating rainbow pattern on slave Pico
+    update_ring(x, spin, total_button_pressure)
 
     # -------------------------
     # Jitter — FASTER timing, aggressive pot control

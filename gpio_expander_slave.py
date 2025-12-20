@@ -51,6 +51,59 @@ rgb_led = neopixel.NeoPixel(Pin(7), 1)  # GPIO 7 - 1 LED
 rgb_led[0] = (0, 0, 50)  # Dim blue on startup
 rgb_led.write()
 
+# -------------------------
+# Day 18: 12-LED RGB Ring (Let It Glow)
+# -------------------------
+# 12x WS2812 RGB LEDs in ring formation on GPIO 8 (Physical pin 12)
+ring = neopixel.NeoPixel(Pin(8), 12)  # GPIO 8 (pin 12) - 12 LEDs in ring
+ring_offset = 0  # Rotation offset for spinning effect
+
+def update_ring_pattern(hue_offset, brightness):
+    """Update 12-LED ring with rotating rainbow
+    hue_offset: 0-360 (rotation position)
+    brightness: 0-255 (overall brightness)
+    """
+    global ring_offset
+    ring_offset = hue_offset % 360
+
+    for i in range(12):
+        # Calculate hue for this LED (30 degrees per LED)
+        hue = (ring_offset + i * 30) % 360
+
+        # Convert to RGB using simple HSV approximation
+        r, g, b = simple_hsv_to_rgb(hue, brightness)
+        ring[i] = (r, g, b)
+
+    ring.write()
+
+def simple_hsv_to_rgb(hue, brightness):
+    """Simple HSV to RGB conversion for ring
+    hue: 0-360
+    brightness: 0-255
+    """
+    h = hue % 360
+    v = brightness / 255.0
+
+    if h < 60:
+        r, g, b = 1.0, h/60.0, 0
+    elif h < 120:
+        r, g, b = (120-h)/60.0, 1.0, 0
+    elif h < 180:
+        r, g, b = 0, 1.0, (h-120)/60.0
+    elif h < 240:
+        r, g, b = 0, (240-h)/60.0, 1.0
+    elif h < 300:
+        r, g, b = (h-240)/60.0, 0, 1.0
+    else:
+        r, g, b = 1.0, 0, (360-h)/60.0
+
+    return (int(r*v*255), int(g*v*255), int(b*v*255))
+
+# Initialize ring with startup pattern
+for i in range(12):
+    ring[i] = (0, 10, 20)  # Dim cyan
+ring.write()
+
 def read_dip_switches():
     """Read all 5 DIP switches and return as byte
     Returns byte with bits 0-4 representing switches 1-5
@@ -72,6 +125,7 @@ print("UART0 RX: GPIO 1 (Physical pin 2)")
 print("Baudrate: 9600")
 print("DIP switches: GPIO 2-6 (Physical pins 4-9)")
 print("RGB LED: GPIO 7 (Physical pin 10)")
+print("LED Ring: GPIO 8 (Physical pin 12) - 12 LEDs")
 print("=" * 40)
 print("Waiting for requests from master...\n")
 
@@ -82,7 +136,10 @@ print("Waiting for requests from master...\n")
 # - Slave responds with single byte containing DIP switch state
 #
 # Master sends 'C' followed by 3 bytes (R, G, B) (Set RGB LED color)
-# - Slave sets RGB LED and sends 'OK' confirmation
+# - Slave sets RGB LED and sends 'K' confirmation
+#
+# Master sends 'N' followed by 2 bytes (hue_offset, brightness) (Update ring pattern)
+# - Slave updates 12-LED ring and sends 'K' confirmation
 #
 # Master sends 'S' (Status request - diagnostics)
 # - Slave sends status string
@@ -131,6 +188,26 @@ while True:
                     # Set RGB LED
                     rgb_led[0] = (r, g, b)
                     rgb_led.write()
+
+                    # Send confirmation
+                    uart.write(b'K')  # Single byte 'K' for OK
+
+            elif cmd == ord('N'):  # Update ring pattern (riNg)
+                # Wait for 2 bytes (hue_offset, brightness)
+                timeout = time.ticks_ms()
+                while uart.any() < 2:
+                    if time.ticks_diff(time.ticks_ms(), timeout) > 50:  # 50ms timeout
+                        break
+                    time.sleep_ms(1)
+
+                if uart.any() >= 2:
+                    # Read ring parameters
+                    ring_data = uart.read(2)
+                    hue_offset = int((ring_data[0] / 255.0) * 360)  # 0-255 -> 0-360
+                    brightness = ring_data[1]  # 0-255
+
+                    # Update ring pattern
+                    update_ring_pattern(hue_offset, brightness)
 
                     # Send confirmation
                     uart.write(b'K')  # Single byte 'K' for OK

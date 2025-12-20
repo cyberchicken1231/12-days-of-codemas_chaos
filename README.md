@@ -432,6 +432,55 @@ GND --> GND (both)
 
 ---
 
+### Day 18: 12-LED RGB Ring (Let It Glow)
+**File:** `day-18.py`
+
+**Components:**
+- 1x 12-LED WS2812 RGB Ring (NeoPixel compatible)
+- 3x Jumper wires
+- Optional: 470Ω resistor for data line protection
+
+**Slave Pico Pin Mapping:**
+- GPIO 8: RGB Ring data line (Physical pin 12) - 12 LEDs
+
+**Power:**
+- VCC: 3.3V or 5V
+- GND: Ground
+
+**Features:**
+- **12-LED rotating rainbow** - Spinning color wheel pattern
+- **Chaos-driven rotation** - Ring spins based on logistic map value
+- **Dynamic brightness** - Varies with button pressure and Dirac spinor energy
+- **UART control** - Main Pico sends pattern commands to slave
+- **Smooth animation** - 30° hue spacing between adjacent LEDs
+- **Real-time updates** - Pattern changes every loop
+- **Distributed processing** - Ring rendering on slave Pico
+
+**Pattern Algorithm:**
+- Each LED offset by 30° hue (360° / 12 LEDs)
+- Rotation driven by chaos value + spinor component
+- Brightness = 0.3 base + buttons (0.3 max) + spinor (0.2 max)
+
+**Protocol:**
+- Main sends `'N' + hue_offset (0-255) + brightness (0-255)` (3 bytes)
+- Slave updates 12-LED ring and responds with `'K'`
+
+**Wiring:**
+```
+Slave Pico GP8 (pin 12) --> Ring DIN
+5V --> Ring VCC (recommended for brightness)
+GND --> Ring GND
+```
+
+**Notes:**
+- Ring on slave Pico saves main Pico bandwidth
+- Only 3 bytes sent per update vs 36 bytes for full RGB control
+- Pattern generated locally on slave for efficiency
+- 5V power recommended for full brightness
+- Optional 470Ω + 1000µF capacitor for power stability
+
+---
+
 ## Complete Pin Mapping Reference
 
 | GPIO | Component | Day | Type | Notes |
