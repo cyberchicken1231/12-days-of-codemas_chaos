@@ -260,32 +260,59 @@ strip = neopixel.NeoPixel(Pin(14), NUM_LEDS)  # GPIO 14 (physical pin 19)
 # -------------------------
 # Day 17: 2x Addressable RGB LEDs (Let It Glow)
 # -------------------------
-# 2x 10mm WS2812 RGB LEDs on GPIO 3 (freed from Button 3)
-rgb_leds = neopixel.NeoPixel(Pin(3), 2)  # GPIO 3 (physical pin 5) - 2 LEDs
+# LED 0: Main Pico GP3 (physical pin 5) - Chaos rainbow
+# LED 1: Slave Pico GP7 (physical pin 10) - Activity indicator (via UART)
+rgb_led0 = neopixel.NeoPixel(Pin(3), 1)  # GPIO 3 (physical pin 5) - Chaos LED on main Pico
+
+def send_rgb_color(r, g, b):
+    """Send RGB color command to slave Pico for LED 1
+    Protocol: 'C' + R + G + B (4 bytes total)
+    """
+    try:
+        # Send color command: 'C' followed by 3 bytes
+        uart_expander.write(b'C')
+        uart_expander.write(bytes([r, g, b]))
+
+        # Wait for confirmation (optional, with timeout)
+        start = time.ticks_ms()
+        while not uart_expander.any():
+            if time.ticks_diff(time.ticks_ms(), start) > 50:  # 50ms timeout
+                return False
+            time.sleep_ms(1)
+
+        # Read confirmation
+        if uart_expander.any():
+            conf = uart_expander.read(1)
+            return conf == b'K'
+        return False
+    except:
+        return False
 
 def update_rgb_leds(chaos_val, dip_val, tilt_energy, beam_energy):
     """Update 2 RGB LEDs based on different entropy sources
-    LED 0: Chaos-driven (logistic map)
-    LED 1: Sensor-driven (tilt + beam + DIP)
+    LED 0 (Main GP3): Chaos-driven (logistic map)
+    LED 1 (Slave GP7): Sensor-driven (tilt + beam + DIP) via UART
     """
     # LED 0: Chaos rainbow (cycles through spectrum based on x value)
     hue = int(chaos_val * 360)  # 0-360 degrees
     r0, g0, b0 = hsv_to_rgb(hue, 1.0, 0.5)  # Full saturation, 50% brightness
-    rgb_leds[0] = (r0, g0, b0)
+    rgb_led0[0] = (r0, g0, b0)
+    rgb_led0.write()
 
     # LED 1: Sensor mix (warm colors = high activity, cool colors = low activity)
     activity = (tilt_energy * 0.4 + beam_energy * 0.4 + dip_val * 0.2)  # 0-1
     if activity > 0.7:
         # High activity: Red-Orange
-        rgb_leds[1] = (200, int(50 + activity * 100), 0)
+        r1, g1, b1 = 200, int(50 + activity * 100), 0
     elif activity > 0.4:
         # Medium activity: Yellow-Green
-        rgb_leds[1] = (int(150 - activity * 100), 150, 0)
+        r1, g1, b1 = int(150 - activity * 100), 150, 0
     else:
         # Low activity: Blue-Purple
-        rgb_leds[1] = (int(activity * 100), 0, int(100 + activity * 100))
+        r1, g1, b1 = int(activity * 100), 0, int(100 + activity * 100)
 
-    rgb_leds.write()
+    # Send color to slave Pico via UART
+    send_rgb_color(r1, g1, b1)
 
 def hsv_to_rgb(h, s, v):
     """Convert HSV to RGB
