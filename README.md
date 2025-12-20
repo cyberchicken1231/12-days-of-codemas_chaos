@@ -382,41 +382,50 @@ GND <------------> GND
 - 6x Jumper wires (3 per LED)
 - Optional: 2x 470Ω resistors for data line protection
 
-**Pin Mapping:**
+**Main Pico Pin Mapping:**
 - GPIO 3: RGB LED 0 data line (Physical pin 5) - Chaos rainbow
-- GPIO 8: RGB LED 1 data line (Physical pin 11) - Activity indicator
-- VCC: 3.3V or 5V power (both LEDs)
-- GND: Ground (both LEDs)
+
+**Slave Pico Pin Mapping:**
+- GPIO 7: RGB LED 1 data line (Physical pin 10) - Activity indicator
+
+**Power (both LEDs):**
+- VCC: 3.3V or 5V
+- GND: Ground
 
 **Features:**
-- **Dual RGB indicators** - 2 fully independent addressable LEDs on separate GPIOs
-- **LED 0 (GP3): Chaos Rainbow** - Cycles through full color spectrum based on logistic map value (x)
-- **LED 1 (GP8): Activity Indicator** - Shows sensor activity levels with color coding:
+- **Dual RGB indicators** - 2 fully independent addressable LEDs on separate Picos
+- **LED 0 (Main GP3): Chaos Rainbow** - Cycles through full color spectrum based on logistic map value (x)
+- **LED 1 (Slave GP7): Activity Indicator** - Controlled via UART, shows sensor activity levels:
   - **High activity (>70%)**: Red-Orange (tilt/beam/DIP active)
   - **Medium activity (40-70%)**: Yellow-Green
   - **Low activity (<40%)**: Blue-Purple (calm)
 - **HSV color space** - Smooth hue transitions for LED 0
+- **UART color commands** - Main Pico sends RGB values to slave for LED 1
 - **Real-time updates** - Colors change every loop iteration
 - **10mm diffused lens** - Wide viewing angle
-- **Separate control** - Independent GPIOs for reliable operation
-- **Freed GPIOs** - Uses GP3 and GP8 (previously Buttons 2 & 3)
+- **Distributed control** - LED 0 on main Pico, LED 1 on slave Pico
 
 **Color Modes:**
 - **Chaos LED** (LED 0): Hue = `x * 360°`, full saturation, 50% brightness
 - **Activity LED** (LED 1): Blends tilt energy, beam break energy, and DIP switch value
 
+**Protocol:**
+- Main sends `'C' + R + G + B` (4 bytes) to set LED 1 color
+- Slave responds with `'K'` confirmation
+
 **Wiring:**
 ```
-Main Pico          RGB LED 0          RGB LED 1
----------          ---------          ---------
-GP3 (pin 5) -----> DIN
-GP8 (pin 11) --------------------> DIN
-3.3V or 5V ------> VCC             VCC
-GND <------------- GND             GND
+Main Pico GP3 (pin 5) --> RGB LED 0 DIN
+Slave Pico GP7 (pin 10) --> RGB LED 1 DIN
+
+Power both LEDs:
+3.3V or 5V --> VCC (both)
+GND --> GND (both)
 ```
 
 **Notes:**
-- LEDs on separate GPIOs for independent control and better reliability
+- LED 1 on slave Pico eliminates GPIO constraints on main Pico
+- UART protocol extended for RGB color commands
 - Optional 470Ω resistor on each data line for protection
 - 100µF capacitor across power supply recommended for stability
 - WS2812 LEDs work at both 3.3V and 5V logic levels
@@ -435,7 +444,7 @@ GND <------------- GND             GND
 | 5 | Bar Graph Seg 2 | 15 | Digital OUT | Network resistor |
 | 6 | OLED SDA | 11 | I2C Data | SSD1306 128x32 |
 | 7 | OLED SCL | 11 | I2C Clock | 400kHz |
-| 8 | RGB LED 1 Data | 17 | Digital OUT | WS2812 - Activity indicator |
+| 8 | ~~Button 2~~ (removed) | ~~3~~ | - | Freed for expansion |
 | 9 | Bar Graph Seg 3 | 15 | Digital OUT | Network resistor |
 | 10 | Bar Graph Seg 4 | 15 | Digital OUT | Network resistor |
 | 11 | Bar Graph Seg 5 | 15 | Digital OUT | Network resistor |

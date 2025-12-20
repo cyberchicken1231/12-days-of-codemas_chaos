@@ -2,7 +2,11 @@
 # MicroPython on RP2040 (Pico)
 #
 # This Pico acts as a UART slave device to expand GPIO for the main Pico.
-# It reads a 5-way DIP switch and sends the state over UART when requested.
+# Features:
+# - Reads 5-way DIP switch (GP2-6)
+# - Controls RGB LED 1 (GP7) - Day 17
+# - Sends DIP switch state over UART when requested
+# - Receives RGB color commands from main Pico
 #
 # Wiring between Picos (UART connection):
 # - Main Pico GP12 (UART0 TX) --> Slave Pico GP1  (UART0 RX) [Physical pin 16 -> pin 2]
@@ -13,6 +17,7 @@
 
 from machine import Pin, UART
 import time
+import neopixel
 
 # -------------------------
 # UART Configuration
@@ -38,6 +43,14 @@ dip_pins = [
 status_led = Pin(25, Pin.OUT)
 status_led.value(1)  # Turn on to show slave is running
 
+# -------------------------
+# Day 17: RGB LED 1 (Activity Indicator)
+# -------------------------
+# WS2812 RGB LED on GPIO 7 (Physical pin 10)
+rgb_led = neopixel.NeoPixel(Pin(7), 1)  # GPIO 7 - 1 LED
+rgb_led[0] = (0, 0, 50)  # Dim blue on startup
+rgb_led.write()
+
 def read_dip_switches():
     """Read all 5 DIP switches and return as byte
     Returns byte with bits 0-4 representing switches 1-5
@@ -58,16 +71,21 @@ print("UART0 TX: GPIO 0 (Physical pin 1)")
 print("UART0 RX: GPIO 1 (Physical pin 2)")
 print("Baudrate: 9600")
 print("DIP switches: GPIO 2-6 (Physical pins 4-9)")
+print("RGB LED: GPIO 7 (Physical pin 10)")
 print("=" * 40)
 print("Waiting for requests from master...\n")
 
 # -------------------------
 # Protocol: Simple request-response
 # -------------------------
-# Master sends 'R' (Read request)
-# Slave responds with single byte containing DIP switch state
+# Master sends 'R' (Read DIP switches)
+# - Slave responds with single byte containing DIP switch state
 #
-# Optional: Master can send 'S' (Status) for diagnostics
+# Master sends 'C' followed by 3 bytes (R, G, B) (Set RGB LED color)
+# - Slave sets RGB LED and sends 'OK' confirmation
+#
+# Master sends 'S' (Status request - diagnostics)
+# - Slave sends status string
 # -------------------------
 
 last_state = 0xFF  # Track last state for change detection
@@ -96,6 +114,26 @@ while True:
                     last_state = state
 
                 request_count += 1
+
+            elif cmd == ord('C'):  # Set RGB LED color
+                # Wait for 3 bytes (R, G, B)
+                timeout = time.ticks_ms()
+                while uart.any() < 3:
+                    if time.ticks_diff(time.ticks_ms(), timeout) > 50:  # 50ms timeout
+                        break
+                    time.sleep_ms(1)
+
+                if uart.any() >= 3:
+                    # Read RGB values
+                    rgb_data = uart.read(3)
+                    r, g, b = rgb_data[0], rgb_data[1], rgb_data[2]
+
+                    # Set RGB LED
+                    rgb_led[0] = (r, g, b)
+                    rgb_led.write()
+
+                    # Send confirmation
+                    uart.write(b'K')  # Single byte 'K' for OK
 
             elif cmd == ord('S'):  # Status request
                 # Send diagnostic info
