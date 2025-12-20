@@ -260,32 +260,34 @@ strip = neopixel.NeoPixel(Pin(14), NUM_LEDS)  # GPIO 14 (physical pin 19)
 # -------------------------
 # Day 17: 2x Addressable RGB LEDs (Let It Glow)
 # -------------------------
-# 2x 10mm WS2812 RGB LEDs on GPIO 3 (freed from Button 3)
-rgb_leds = neopixel.NeoPixel(Pin(3), 2)  # GPIO 3 (physical pin 5) - 2 LEDs
+# 2x 10mm WS2812 RGB LEDs on separate GPIOs (freed from Buttons 2 & 3)
+rgb_led0 = neopixel.NeoPixel(Pin(3), 1)  # GPIO 3 (physical pin 5) - Chaos LED
+rgb_led1 = neopixel.NeoPixel(Pin(8), 1)  # GPIO 8 (physical pin 11) - Activity LED
 
 def update_rgb_leds(chaos_val, dip_val, tilt_energy, beam_energy):
     """Update 2 RGB LEDs based on different entropy sources
-    LED 0: Chaos-driven (logistic map)
-    LED 1: Sensor-driven (tilt + beam + DIP)
+    LED 0 (GP3): Chaos-driven (logistic map)
+    LED 1 (GP8): Sensor-driven (tilt + beam + DIP)
     """
     # LED 0: Chaos rainbow (cycles through spectrum based on x value)
     hue = int(chaos_val * 360)  # 0-360 degrees
     r0, g0, b0 = hsv_to_rgb(hue, 1.0, 0.5)  # Full saturation, 50% brightness
-    rgb_leds[0] = (r0, g0, b0)
+    rgb_led0[0] = (r0, g0, b0)
+    rgb_led0.write()
 
     # LED 1: Sensor mix (warm colors = high activity, cool colors = low activity)
     activity = (tilt_energy * 0.4 + beam_energy * 0.4 + dip_val * 0.2)  # 0-1
     if activity > 0.7:
         # High activity: Red-Orange
-        rgb_leds[1] = (200, int(50 + activity * 100), 0)
+        rgb_led1[0] = (200, int(50 + activity * 100), 0)
     elif activity > 0.4:
         # Medium activity: Yellow-Green
-        rgb_leds[1] = (int(150 - activity * 100), 150, 0)
+        rgb_led1[0] = (int(150 - activity * 100), 150, 0)
     else:
         # Low activity: Blue-Purple
-        rgb_leds[1] = (int(activity * 100), 0, int(100 + activity * 100))
+        rgb_led1[0] = (int(activity * 100), 0, int(100 + activity * 100))
 
-    rgb_leds.write()
+    rgb_led1.write()
 
 def hsv_to_rgb(h, s, v):
     """Convert HSV to RGB
