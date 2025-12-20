@@ -374,6 +374,52 @@ GND <------------> GND
 
 ---
 
+### Day 17: 2x Addressable RGB LEDs (Let It Glow)
+**File:** `day-17.py`
+
+**Components:**
+- 2x 10mm WS2812 Addressable RGB LEDs
+- 3x Jumper wires
+- Optional: 470Ω resistor for data line protection
+
+**Pin Mapping:**
+- GPIO 3: RGB LED data line (Physical pin 5)
+- VCC: 3.3V or 5V power
+- GND: Ground
+
+**Features:**
+- **Dual RGB indicators** - 2 independent addressable LEDs
+- **LED 0: Chaos Rainbow** - Cycles through full color spectrum based on logistic map value (x)
+- **LED 1: Activity Indicator** - Shows sensor activity levels with color coding:
+  - **High activity (>70%)**: Red-Orange (tilt/beam/DIP active)
+  - **Medium activity (40-70%)**: Yellow-Green
+  - **Low activity (<40%)**: Blue-Purple (calm)
+- **HSV color space** - Smooth hue transitions for LED 0
+- **Real-time updates** - Colors change every loop iteration
+- **10mm diffused lens** - Wide viewing angle
+- **Freed GPIO** - Uses GP3 (previously Button 3)
+
+**Color Modes:**
+- **Chaos LED** (LED 0): Hue = `x * 360°`, full saturation, 50% brightness
+- **Activity LED** (LED 1): Blends tilt energy, beam break energy, and DIP switch value
+
+**Wiring:**
+```
+Main Pico          RGB LEDs
+---------          --------
+GP3 (Data) ------> DIN (LED 0) --> DOUT --> DIN (LED 1)
+3.3V or 5V ------> VCC (both LEDs)
+GND <------------> GND (both LEDs)
+```
+
+**Notes:**
+- LEDs are daisy-chained (LED 0 DOUT → LED 1 DIN)
+- Optional 470Ω resistor between GP3 and first LED DIN for protection
+- 100µF capacitor across power supply recommended for stability
+- WS2812 LEDs work at both 3.3V and 5V logic levels
+
+---
+
 ## Complete Pin Mapping Reference
 
 | GPIO | Component | Day | Type | Notes |
@@ -381,7 +427,7 @@ GND <------------> GND
 | 0 | Red Diffused LED | 13 | Digital OUT | + 100Ω resistor |
 | 1 | Button 4 | 14 | Digital IN | PULL_UP |
 | 2 | Button 5 | 14 | Digital IN | PULL_UP |
-| 3 | ~~Button 3~~ (removed) | ~~3~~ | - | Freed for expansion |
+| 3 | 2x RGB LEDs Data | 17 | Digital OUT | WS2812 addressable (2 LEDs) |
 | 4 | Bar Graph Seg 1 | 15 | Digital OUT | Network resistor |
 | 5 | Bar Graph Seg 2 | 15 | Digital OUT | Network resistor |
 | 6 | OLED SDA | 11 | I2C Data | SSD1306 128x32 |
