@@ -481,6 +481,65 @@ GND --> Ring GND
 
 ---
 
+### Day 20: DHT20 Temperature & Humidity Sensor (Let It Glow)
+**File:** `day-20.py`
+
+**Components:**
+- 1x DHT20 I2C Temperature & Humidity Sensor
+- 4x Jumper wires (VCC, GND, SDA, SCL)
+
+**Slave Pico Pin Mapping:**
+- GPIO 14: I2C1 SDA (Physical pin 19) - Data line
+- GPIO 15: I2C1 SCL (Physical pin 20) - Clock line
+
+**Sensor Specifications:**
+- I2C Address: 0x38
+- Temperature Range: -40°C to +80°C (±0.5°C accuracy)
+- Humidity Range: 0% to 100% RH (±3% accuracy)
+- Operating Voltage: 3.3V or 5V
+- Response Time: <8 seconds
+
+**Features:**
+- **Environmental sensing** - Measures ambient temperature and humidity
+- **Chaos modulation** - Temperature affects logistic map parameter 'r'
+- **Display modulation** - Humidity affects bar graph brightness
+- **UART protocol** - Main Pico requests readings from slave
+- **Real-time feedback** - Sensor readings printed to serial
+- **Auto-calibration** - Sensor self-calibrates on initialization
+- **Error handling** - Graceful degradation if sensor fails
+
+**Integration:**
+- **Temperature influence**: Warmer temps = faster/more chaotic behavior
+  - Formula: `temp_influence_dht = ((temp_c - 20) / 10.0) * 0.1`
+  - Nominal: 20-30°C → -0.1 to +0.1 influence on 'r' parameter
+- **Humidity influence**: Higher humidity = brighter/more active display
+  - Formula: `humidity_influence = (humidity - 50) / 50.0`
+  - Nominal: 40-60% RH → modulates bar graph level ±15%
+
+**Protocol:**
+- Main sends `'T'` (1 byte)
+- Slave reads DHT20 and sends 4 bytes: `temp_int, temp_frac, hum_int, hum_frac`
+- Example: `23, 45, 55, 32` = 23.45°C, 55.32% RH
+- On error: Slave sends `255, 255, 255, 255`
+
+**Wiring:**
+```
+Slave Pico GP14 (pin 19) --> DHT20 SDA
+Slave Pico GP15 (pin 20) --> DHT20 SCL
+3.3V --> DHT20 VCC
+GND --> DHT20 GND
+```
+
+**Notes:**
+- DHT20 is digital I2C sensor (more accurate than DHT11/DHT22)
+- No pull-up resistors needed (built into sensor module)
+- Measurement takes ~80ms (non-blocking on slave)
+- Use main Pico's DS18B20 for comparison/redundancy
+- Both temp sensors contribute to chaos entropy
+- I2C bus runs at 400kHz for fast reads
+
+---
+
 ## Complete Pin Mapping Reference
 
 | GPIO | Component | Day | Type | Notes |

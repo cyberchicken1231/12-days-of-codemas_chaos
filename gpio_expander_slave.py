@@ -15,7 +15,7 @@
 #
 # Make sure both Picos share a common ground!
 
-from machine import Pin, UART
+from machine import Pin, UART, I2C
 import time
 import neopixel
 
@@ -104,6 +104,71 @@ for i in range(12):
     ring[i] = (0, 10, 20)  # Dim cyan
 ring.write()
 
+# -------------------------
+# Day 20: DHT20 Temperature & Humidity Sensor
+# -------------------------
+# I2C bus on GP14 (SDA, pin 19) and GP15 (SCL, pin 20)
+# DHT20 I2C address: 0x38
+i2c = I2C(1, scl=Pin(15), sda=Pin(14), freq=400000)  # I2C1 bus
+
+DHT20_ADDR = 0x38
+
+def init_dht20():
+    """Initialize DHT20 sensor if needed"""
+    try:
+        # Check if sensor responds
+        devices = i2c.scan()
+        if DHT20_ADDR in devices:
+            print("DHT20 found at 0x{:02X}".format(DHT20_ADDR))
+            # Read status register (0x71)
+            status = i2c.readfrom_mem(DHT20_ADDR, 0x71, 1)[0]
+            # Check if calibrated (bit 3 should be 1)
+            if not (status & 0x08):
+                # Not calibrated, send init commands
+                i2c.writeto(DHT20_ADDR, bytes([0xBE, 0x08, 0x00]))
+                time.sleep_ms(10)
+            return True
+        else:
+            print("DHT20 not found on I2C bus")
+            return False
+    except Exception as e:
+        print("DHT20 init error:", e)
+        return False
+
+def read_dht20():
+    """Read temperature and humidity from DHT20
+    Returns: (temp_c, humidity_percent) or (None, None) on error
+    """
+    try:
+        # Trigger measurement: 0xAC, 0x33, 0x00
+        i2c.writeto(DHT20_ADDR, bytes([0xAC, 0x33, 0x00]))
+
+        # Wait for measurement (80ms typical)
+        time.sleep_ms(80)
+
+        # Read 7 bytes of data
+        data = i2c.readfrom(DHT20_ADDR, 7)
+
+        # Check if busy (bit 7 of status byte should be 0)
+        if data[0] & 0x80:
+            return (None, None)  # Still busy
+
+        # Extract humidity (20 bits)
+        humidity_raw = ((data[1] << 12) | (data[2] << 4) | (data[3] >> 4))
+        humidity = (humidity_raw / 1048576.0) * 100.0
+
+        # Extract temperature (20 bits)
+        temp_raw = (((data[3] & 0x0F) << 16) | (data[4] << 8) | data[5])
+        temp_c = (temp_raw / 1048576.0) * 200.0 - 50.0
+
+        return (temp_c, humidity)
+    except Exception as e:
+        print("DHT20 read error:", e)
+        return (None, None)
+
+# Initialize DHT20 sensor
+dht20_ready = init_dht20()
+
 def read_dip_switches():
     """Read all 5 DIP switches and return as byte
     Returns byte with bits 0-4 representing switches 1-5
@@ -126,6 +191,7 @@ print("Baudrate: 9600")
 print("DIP switches: GPIO 2-6 (Physical pins 4-9)")
 print("RGB LED: GPIO 7 (Physical pin 10)")
 print("LED Ring: GPIO 8 (Physical pin 12) - 12 LEDs")
+print("DHT20 Sensor: I2C1 - GP14/SDA (pin 19), GP15/SCL (pin 20)")
 print("=" * 40)
 print("Waiting for requests from master...\n")
 
@@ -140,6 +206,9 @@ print("Waiting for requests from master...\n")
 #
 # Master sends 'N' followed by 2 bytes (hue_offset, brightness) (Update ring pattern)
 # - Slave updates 12-LED ring and sends 'K' confirmation
+#
+# Master sends 'T' (Read Temperature & Humidity from DHT20)
+# - Slave reads DHT20 sensor and sends 4 bytes: temp_int, temp_frac, hum_int, hum_frac
 #
 # Master sends 'S' (Status request - diagnostics)
 # - Slave sends status string
@@ -211,6 +280,26 @@ while True:
 
                     # Send confirmation
                     uart.write(b'K')  # Single byte 'K' for OK
+
+            elif cmd == ord('T'):  # Read Temperature & Humidity
+                # Read DHT20 sensor
+                temp_c, humidity = read_dht20()
+
+                if temp_c is not None and humidity is not None:
+                    # Convert to bytes: integer part and fractional part
+                    temp_int = int(temp_c)
+                    temp_frac = int((temp_c - temp_int) * 100)  # 2 decimal places
+                    hum_int = int(humidity)
+                    hum_frac = int((humidity - hum_int) * 100)  # 2 decimal places
+
+                    # Send 4 bytes: temp_int, temp_frac, hum_int, hum_frac
+                    uart.write(bytes([temp_int, temp_frac, hum_int, hum_frac]))
+
+                    print("DHT20: {}.{}°C, {}.{}%".format(temp_int, temp_frac, hum_int, hum_frac))
+                else:
+                    # Send error values (255, 255, 255, 255)
+                    uart.write(bytes([255, 255, 255, 255]))
+                    print("DHT20 read failed")
 
             elif cmd == ord('S'):  # Status request
                 # Send diagnostic info
