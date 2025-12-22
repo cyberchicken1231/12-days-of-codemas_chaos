@@ -540,6 +540,62 @@ GND --> DHT20 GND
 
 ---
 
+### Day 21: LED String Lights (Let It Glow)
+**File:** `day-21.py`
+
+**Components:**
+- 1x Addressable LED String Lights (~15 LEDs, WS2812/NeoPixel compatible)
+- 3x Jumper wires (Data, VCC, GND)
+
+**Slave Pico Pin Mapping:**
+- GPIO 9: LED String data line (Physical pin 12)
+
+**Power:**
+- VCC: 5V recommended (can use 3.3V at lower brightness)
+- GND: Ground
+
+**Features:**
+- **4 animated patterns** - Chase, Twinkle, Wave, and Chaos modes
+- **Chaos-driven pattern selection** - Logistic map value determines active pattern
+- **Spinor-modulated speed** - Animation speed varies with Dirac spinor energy
+- **Humidity-modulated brightness** - Higher humidity = brighter lights
+- **Autonomous animation** - Patterns run continuously on slave Pico
+- **UART control** - Main Pico sends pattern parameters, slave handles rendering
+
+**Pattern Modes:**
+- **0: Chase (Running Lights)** - Comet effect with warm white trailing fade
+- **1: Twinkle (Random Sparkles)** - Cool white random twinkling stars
+- **2: Wave (Smooth Pulsing)** - Warm amber sine wave across string
+- **3: Chaos (Pseudo-Random Colors)** - Deterministic rainbow chaos pattern
+
+**Pattern Algorithm:**
+- Pattern mode = `int(chaos_val * 4) % 4` (0-3)
+- Speed = `0.3 + spinor_energy * 0.7` (0-1)
+- Brightness = `0.5 + (humidity / 100) * 0.3` (50-80%)
+- Update interval = `50-200ms` (faster at high speed)
+
+**Protocol:**
+- Main sends `'L' + pattern_mode (0-255) + speed (0-255) + brightness (0-255)` (4 bytes)
+- Slave updates pattern parameters and responds with `'K'`
+- Animation continues autonomously between updates
+
+**Wiring:**
+```
+Slave Pico GP9 (pin 12) --> String DIN
+5V --> String VCC (recommended for full brightness)
+GND --> String GND
+```
+
+**Notes:**
+- Festive string light effect perfect for holiday chaos
+- Pattern runs independently - doesn't block UART communication
+- Speed adaptive: slow chaos = slow patterns, fast chaos = rapid animations
+- Each pattern has unique color temperature (warm/cool/amber/rainbow)
+- Can be extended to 25+ LEDs by changing `NUM_STRING_LEDS`
+- Patterns generated locally on slave for efficiency
+
+---
+
 ## Complete Pin Mapping Reference
 
 | GPIO | Component | Day | Type | Notes |

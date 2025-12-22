@@ -169,6 +169,96 @@ def read_dht20():
 # Initialize DHT20 sensor
 dht20_ready = init_dht20()
 
+# -------------------------
+# Day 21: LED String Lights (Let It Glow)
+# -------------------------
+# ~15 LED addressable string lights on GPIO 9
+NUM_STRING_LEDS = 15
+string_lights = neopixel.NeoPixel(Pin(9), NUM_STRING_LEDS)  # GPIO 9
+
+# String light pattern state
+string_pattern_mode = 0  # 0=chase, 1=twinkle, 2=wave, 3=chaos
+string_speed = 0.5  # 0-1
+string_brightness = 0.6  # 0-1
+string_position = 0  # Animation position
+string_last_update = time.ticks_ms()
+
+def update_string_chase(position, brightness):
+    """Chase pattern - running lights"""
+    for i in range(NUM_STRING_LEDS):
+        # Calculate distance from chase position
+        dist = abs(i - (position % NUM_STRING_LEDS))
+        if dist > NUM_STRING_LEDS // 2:
+            dist = NUM_STRING_LEDS - dist
+
+        # Fade based on distance (trailing comet effect)
+        if dist == 0:
+            intensity = brightness
+        elif dist <= 3:
+            intensity = brightness * (1.0 - dist * 0.25)
+        else:
+            intensity = 0
+
+        # Warm white color
+        r = int(255 * intensity)
+        g = int(200 * intensity)
+        b = int(100 * intensity)
+        string_lights[i] = (r, g, b)
+
+    string_lights.write()
+
+def update_string_twinkle(brightness):
+    """Twinkle pattern - random sparkles"""
+    import random
+    for i in range(NUM_STRING_LEDS):
+        # Random chance to twinkle
+        if random.random() < 0.1:
+            intensity = random.random() * brightness
+        else:
+            # Fade out
+            r, g, b = string_lights[i]
+            intensity = max(0, (r / 255.0) * 0.9)
+
+        # Cool white color
+        r = int(200 * intensity)
+        g = int(220 * intensity)
+        b = int(255 * intensity)
+        string_lights[i] = (r, g, b)
+
+    string_lights.write()
+
+def update_string_wave(position, brightness):
+    """Wave pattern - smooth pulsing"""
+    import math
+    for i in range(NUM_STRING_LEDS):
+        # Sine wave across the string
+        phase = (i / NUM_STRING_LEDS) * 2 * 3.14159 + (position * 0.1)
+        intensity = (math.sin(phase) * 0.5 + 0.5) * brightness
+
+        # Warm amber color
+        r = int(255 * intensity)
+        g = int(150 * intensity)
+        b = int(50 * intensity)
+        string_lights[i] = (r, g, b)
+
+    string_lights.write()
+
+def update_string_chaos(position, brightness):
+    """Chaos pattern - pseudo-random colors"""
+    import random
+    random.seed(position)  # Deterministic chaos
+    for i in range(NUM_STRING_LEDS):
+        hue = (random.random() * 360 + position) % 360
+        r, g, b = simple_hsv_to_rgb(int(hue), int(brightness * 255))
+        string_lights[i] = (r, g, b)
+
+    string_lights.write()
+
+# Initialize string with dim warm white
+for i in range(NUM_STRING_LEDS):
+    string_lights[i] = (20, 15, 5)
+string_lights.write()
+
 def read_dip_switches():
     """Read all 5 DIP switches and return as byte
     Returns byte with bits 0-4 representing switches 1-5
@@ -191,6 +281,7 @@ print("Baudrate: 9600")
 print("DIP switches: GPIO 2-6 (Physical pins 4-9)")
 print("RGB LED: GPIO 7 (Physical pin 10)")
 print("LED Ring: GPIO 8 (Physical pin 12) - 12 LEDs")
+print("LED String: GPIO 9 (Physical pin 12) - 15 LEDs")
 print("DHT20 Sensor: I2C1 - GP14/SDA (pin 19), GP15/SCL (pin 20)")
 print("=" * 40)
 print("Waiting for requests from master...\n")
@@ -209,6 +300,9 @@ print("Waiting for requests from master...\n")
 #
 # Master sends 'T' (Read Temperature & Humidity from DHT20)
 # - Slave reads DHT20 sensor and sends 4 bytes: temp_int, temp_frac, hum_int, hum_frac
+#
+# Master sends 'L' followed by 3 bytes (pattern_mode, speed, brightness) (Update LED string)
+# - Slave updates LED string pattern and sends 'K' confirmation
 #
 # Master sends 'S' (Status request - diagnostics)
 # - Slave sends status string
@@ -301,12 +395,58 @@ while True:
                     uart.write(bytes([255, 255, 255, 255]))
                     print("DHT20 read failed")
 
+            elif cmd == ord('L'):  # Update LED String Lights
+                # Wait for 3 bytes (pattern_mode, speed, brightness)
+                timeout = time.ticks_ms()
+                while uart.any() < 3:
+                    if time.ticks_diff(time.ticks_ms(), timeout) > 50:  # 50ms timeout
+                        break
+                    time.sleep_ms(1)
+
+                if uart.any() >= 3:
+                    # Read string light parameters
+                    string_data = uart.read(3)
+                    global string_pattern_mode, string_speed, string_brightness
+                    string_pattern_mode = string_data[0]  # 0-3
+                    string_speed = string_data[1] / 255.0  # 0-1
+                    string_brightness = string_data[2] / 255.0  # 0-1
+
+                    # Send confirmation
+                    uart.write(b'K')  # Single byte 'K' for OK
+
+                    print("String: mode={}, speed={:.2f}, brightness={:.2f}".format(
+                        string_pattern_mode, string_speed, string_brightness))
+
             elif cmd == ord('S'):  # Status request
                 # Send diagnostic info
                 state = read_dip_switches()
                 status_msg = "OK:{},REQ:{}\n".format(state, request_count)
                 uart.write(status_msg.encode())
                 print("Status request received - sent:", status_msg.strip())
+
+    # -------------------------
+    # Update LED String Lights Animation
+    # -------------------------
+    # Update pattern based on speed setting
+    now = time.ticks_ms()
+    update_interval = int(50 + (1.0 - string_speed) * 150)  # 50-200ms based on speed
+
+    if time.ticks_diff(now, string_last_update) >= update_interval:
+        string_last_update = now
+
+        # Update animation position
+        global string_position
+        string_position = (string_position + 1) % (NUM_STRING_LEDS * 10)
+
+        # Execute the selected pattern
+        if string_pattern_mode == 0:
+            update_string_chase(string_position, string_brightness)
+        elif string_pattern_mode == 1:
+            update_string_twinkle(string_brightness)
+        elif string_pattern_mode == 2:
+            update_string_wave(string_position, string_brightness)
+        elif string_pattern_mode == 3:
+            update_string_chaos(string_position, string_brightness)
 
     # Small delay to avoid busy-waiting
     time.sleep_ms(1)
